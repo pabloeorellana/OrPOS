@@ -12,8 +12,3 @@ yarn-error.log*
 # Build folder
 dist/
 build/
-```3.  Inicializa el repositorio de Git y haz tu primer commit:
-```bash
-git init
-git add .
-git commit -m "Initial project setup: Backend and Frontend structure"

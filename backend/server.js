@@ -1,40 +1,39 @@
-// Importar los módulos necesarios
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2');
-require('dotenv').config(); // Carga las variables de entorno desde .env
+require('dotenv').config();
 
-// Inicializar la aplicación de Express
+// Importar los enrutadores
+const authRoutes = require('./routes/authRoutes');
+const productRoutes = require('./routes/productRoutes');
+const userRoutes = require('./routes/userRoutes');
+const supplierRoutes = require('./routes/supplierRoutes');
+const saleRoutes = require('./routes/saleRoutes');
+const shiftRoutes = require('./routes/shiftRoutes'); // Asegúrate de que esta línea exista
+const purchaseRoutes = require('./routes/purchaseRoutes');
+const reportsRoutes = require('./routes/reportsRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+
 const app = express();
+app.use(cors()); 
+app.use(express.json()); 
 
-// Configurar middlewares
-app.use(cors()); // Permite solicitudes de otros orígenes (nuestro frontend)
-app.use(express.json()); // Permite al servidor entender JSON
-
-// Configuración de la conexión a la base de datos
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE
-});
-
-// Conectar a la base de datos
-db.connect(err => {
-  if (err) {
-    console.error('Error al conectar a la base de datos:', err);
-    return;
-  }
-  console.log('Conectado exitosamente a la base de datos MySQL.');
-});
-
-// Ruta de prueba para verificar que el servidor funciona
+// Definir las rutas de la API
 app.get('/api', (req, res) => {
-  res.json({ message: '¡Hola desde el backend de El Mercadito!' });
+  res.json({ message: '¡Bienvenido a la API de El Mercadito!' });
 });
+
+app.use('/api/auth', authRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/suppliers', supplierRoutes);
+app.use('/api/sales', saleRoutes);
+app.use('/api/shifts', shiftRoutes); // Asegúrate de que esta línea exista
+app.use('/api/purchases', purchaseRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Iniciar el servidor
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3001; 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
