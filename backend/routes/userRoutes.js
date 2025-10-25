@@ -1,66 +1,75 @@
+// --- backend/routes/userRoutes.js COMPLETO ---
 const express = require('express');
-const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
-const { protect, restrictTo } = require('../middleware/authMiddleware'); // Importar los middlewares de seguridad
-require('dotenv').config();
-
+const { hasPermission } = require('../middleware/authMiddleware');
+const db = require('../db');
+const { logAction } = require('../utils/logger');
 const router = express.Router();
 const saltRounds = 10;
-
-// Configuración de la conexión a la base de datos
-const db = require('../db');
-
-// --- Definición de Rutas Protegidas ---
-
-// GET /api/users -> Obtener todos los usuarios (SIN CONTRASEÑA)
-// Solo accesible para administradores que estén logueados.
-router.get('/', protect, restrictTo('administrador'), async (req, res) => {
+router.get('/', hasPermission('users:view'), async (req, res) => {
+    const tenantId = req.user.tenantId;
     try {
-        const query = 'SELECT id, username, role, created_at FROM users';
-        const [rows] = await db.query(query);
+        const query = `
+            SELECT u.id, u.username, r.name as role 
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            WHERE u.tenant_id = ?
+        `;
+        const [rows] = await db.query(query, [tenantId]);
         res.json(rows);
     } catch (error) {
-        console.error("Error al obtener usuarios:", error);
         res.status(500).json({ message: "Error en el servidor." });
     }
 });
-
-// POST /api/users -> Crear un nuevo usuario
-// Solo accesible para administradores que estén logueados.
-router.post('/', protect, restrictTo('administrador'), async (req, res) => {
-    const { username, password, role } = req.body;
-    if (!username || !password || !role) {
-        return res.status(400).json({ message: "Usuario, contraseña y rol son requeridos." });
+router.post('/', hasPermission('users:manage'), async (req, res) => {
+    const { username, password, role_id } = req.body;
+    const tenantId = req.user.tenantId;
+    if (!username || !password || !role_id) {
+        return res.status(400).json({ message: "Usuario, contraseña y ID de rol son requeridos." });
     }
     try {
+        const [planInfo] = await db.query(`
+            SELECT p.max_users 
+            FROM plans p
+            JOIN tenants t ON p.id = t.plan_id
+            WHERE t.id = ?
+        `, [tenantId]);
+        if (planInfo.length > 0) {
+            const maxUsers = planInfo[0].max_users;
+            const [userCountResult] = await db.query('SELECT COUNT(id) as count FROM users WHERE tenant_id = ?', [tenantId]);
+            const currentUserCount = userCountResult[0].count;
+            if (currentUserCount >= maxUsers) {
+                return res.status(403).json({ message: `Límite de ${maxUsers} usuarios alcanzado para su plan.` });
+            }
+        }
         const hashedPassword = await bcrypt.hash(password, saltRounds);
-        const query = 'INSERT INTO users (username, password, role) VALUES (?, ?, ?)';
-        const [result] = await db.query(query, [username, hashedPassword, role]);
-        res.status(201).json({ id: result.insertId, username, role });
+        const [result] = await db.query('INSERT INTO users (username, password, role_id, tenant_id) VALUES (?, ?, ?, ?)', [username, hashedPassword, role_id, tenantId]);
+        const [roleRows] = await db.query('SELECT name FROM roles WHERE id = ?', [role_id]);
+        const roleName = roleRows[0]?.name || 'desconocido';
+        await logAction(req.user.id, 'USER_CREATE', req.user.tenantId, { createdUserId: result.insertId, username: username, role: roleName });
+        res.status(201).json({ id: result.insertId, username, role: roleName });
     } catch (error) {
-        console.error("Error al crear usuario:", error);
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ message: 'El nombre de usuario ya existe.' });
+        }
         res.status(500).json({ message: "Error al crear el usuario." });
     }
 });
-
-// DELETE /api/users/:id -> Eliminar un usuario
-// Solo accesible para administradores que estén logueados.
-router.delete('/:id', protect, restrictTo('administrador'), async (req, res) => {
+router.delete('/:id', hasPermission('users:manage'), async (req, res) => {
     const { id } = req.params;
+    const tenantId = req.user.tenantId;
+    if (req.user.id === parseInt(id)) {
+        return res.status(400).json({ message: "No puedes eliminar tu propia cuenta." });
+    }
     try {
-        const [result] = await db.query('DELETE FROM users WHERE id = ?', [id]);
+        const [result] = await db.query('DELETE FROM users WHERE id = ? AND tenant_id = ?', [id, tenantId]);
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: "Usuario no encontrado." });
         }
+        await logAction(req.user.id, 'USER_DELETE', req.user.tenantId, { deletedUserId: id });
         res.status(204).send();
     } catch (error) {
-        console.error("Error al eliminar usuario:", error);
         res.status(500).json({ message: "Error al eliminar el usuario." });
     }
 });
-
-// NOTA: La ruta PUT (actualizar usuario) no se ha implementado. Si la necesitáramos,
-// también llevaría los middlewares 'protect' y 'restrictTo'. Por ejemplo:
-// router.put('/:id', protect, restrictTo('administrador'), async (req, res) => { ... });
-
 module.exports = router;

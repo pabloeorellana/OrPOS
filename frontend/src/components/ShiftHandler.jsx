@@ -7,9 +7,9 @@ const ShiftHandler = ({ children }) => {
     const { user, activeShift } = useAuth();
     const [openModal, setOpenModal] = useState(false);
 
-    // --- LÓGICA CORREGIDA ---
-    // Si el usuario es administrador, no aplicamos ninguna restricción de turno.
-    if (user?.role === 'administrador') {
+    // --- LÓGICA CORREGIDA PARA SUPERADMIN ---
+    // Si el usuario es superadmin o administrador, no aplicamos ninguna restricción de turno.
+    if (user?.isSuperAdmin || user?.role === 'administrador') {
         return children; // Simplemente renderiza el contenido de la aplicación.
     }
 
@@ -37,7 +37,6 @@ const ShiftHandler = ({ children }) => {
         );
     }
 
-    // Si hay un turno activo para el empleado/propietario, muestra el contenido.
     return children;
 };
 

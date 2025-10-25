@@ -1,59 +1,104 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Box, Typography, TextField, Button, Grid, MenuItem } from '@mui/material';
+import React, { useEffect } from 'react';
+import { Modal, Box, Typography, TextField, Button, MenuItem, FormControl, InputLabel, Select, FormHelperText } from '@mui/material';
+import { useForm, Controller } from 'react-hook-form';
 
 const style = {
   position: 'absolute',
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
-  width: 500,
+  width: 450,
   bgcolor: 'background.paper',
   border: '2px solid #000',
   boxShadow: 24,
   p: 4,
-  borderRadius: 2,
+  borderRadius: 2
 };
 
-const UserModal = ({ open, onClose, onSave, user }) => {
-  const [formData, setFormData] = useState({ username: '', password: '', role: 'empleado' });
+const UserModal = ({ open, onClose, onSave, roles = [] }) => {
+  const { control, handleSubmit, reset, formState: { errors } } = useForm({
+    defaultValues: {
+      username: '',
+      password: '',
+      role_id: ''
+    }
+  });
 
   useEffect(() => {
-    if (user) {
-      setFormData({ username: user.username, password: '', role: user.role });
-    } else {
-      setFormData({ username: '', password: '', role: 'empleado' });
+    if (open) {
+      reset({
+        username: '',
+        password: '',
+        role_id: ''
+      });
     }
-  }, [user, open]);
+  }, [open, reset]);
 
-  const handleChange = (e) => {
-    setFormData(prevState => ({ ...prevState, [e.target.name]: e.target.value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(formData, user ? user.id : null);
+  const onSubmit = (data) => {
+    onSave(data);
   };
 
   return (
     <Modal open={open} onClose={onClose}>
-      <Box sx={style} component="form" onSubmit={handleSubmit}>
-        <Typography variant="h6">{user ? 'Editar Usuario' : 'Nuevo Usuario'}</Typography>
-        <Grid container spacing={2} sx={{ mt: 1 }}>
-          <Grid item xs={12}>
-            <TextField name="username" label="Nombre de Usuario" value={formData.username} onChange={handleChange} fullWidth required />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField name="password" label="Contraseña" type="password" value={formData.password} onChange={handleChange} fullWidth required={!user} helperText={user ? "Dejar en blanco para no cambiar" : ""} />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField name="role" label="Rol" value={formData.role} onChange={handleChange} fullWidth select required>
-              <MenuItem value="empleado">Empleado</MenuItem>
-              <MenuItem value="propietario">Propietario</MenuItem>
-              <MenuItem value="administrador">Administrador</MenuItem>
-            </TextField>
-          </Grid>
-        </Grid>
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+      <Box sx={style} component="form" onSubmit={handleSubmit(onSubmit)}>
+        <Typography variant="h6">Nuevo Usuario</Typography>
+        
+        <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Controller
+            name="username"
+            control={control}
+            rules={{ required: 'El nombre de usuario es obligatorio' }}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Nombre de Usuario *"
+                fullWidth
+                autoFocus
+                error={!!errors.username}
+                helperText={errors.username?.message}
+              />
+            )}
+          />
+          <Controller
+            name="password"
+            control={control}
+            rules={{ required: 'La contraseña es obligatoria' }}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Contraseña *"
+                type="password"
+                fullWidth
+                error={!!errors.password}
+                helperText={errors.password?.message}
+              />
+            )}
+          />
+          <Controller
+            name="role_id"
+            control={control}
+            rules={{ required: 'El rol es obligatorio' }}
+            render={({ field }) => (
+              <FormControl fullWidth error={!!errors.role_id}>
+                <InputLabel id="role-select-label">Rol *</InputLabel>
+                <Select
+                  {...field}
+                  labelId="role-select-label"
+                  label="Rol *"
+                >
+                  {roles.map((role) => (
+                    <MenuItem key={role.id} value={role.id}>
+                      {role.name.charAt(0).toUpperCase() + role.name.slice(1)}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {errors.role_id && <FormHelperText>{errors.role_id.message}</FormHelperText>}
+              </FormControl>
+            )}
+          />
+        </Box>
+
+        <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
           <Button onClick={onClose} sx={{ mr: 1 }}>Cancelar</Button>
           <Button type="submit" variant="contained">Guardar</Button>
         </Box>

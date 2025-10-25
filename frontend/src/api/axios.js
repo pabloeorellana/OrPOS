@@ -1,23 +1,15 @@
 import axios from 'axios';
 
+// Use Vite environment variable when available. In production set VITE_API_BASE_URL
+// to the API base (e.g. https://api.mydomain.com/api). Fallback to localhost
+// for development.
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+
 const apiClient = axios.create({
-    baseURL: 'http://localhost:3001/api', // La base de nuestra URL de la API
+    baseURL: API_BASE,
 });
 
-// Interceptor: esta función se ejecutará ANTES de cada petición
-apiClient.interceptors.request.use(
-    (config) => {
-        // Obtenemos el token de localStorage
-        const token = localStorage.getItem('token');
-        if (token) {
-            // Si hay token, lo añadimos a la cabecera de autorización
-            config.headers['Authorization'] = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
+// Ya NO necesitamos el interceptor. AuthContext.jsx ahora es la única
+// fuente de verdad para el token de autorización.
 
 export default apiClient;
