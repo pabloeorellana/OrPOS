@@ -6,7 +6,7 @@ export const getSubdomain = () => {
   if (!isDevelopment) {
     const host = window.location.host;
     const parts = host.split('.');
-    if (parts.length >= 3 && parts[0] !== 'www') {
+    if (parts.length >= 3 && parts[0] !== 'www' && parts[0] !== 'orpos') {
       return parts[0];
     }
     return null;
