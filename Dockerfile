@@ -1,27 +1,30 @@
 # ---- Etapa 1: Build ----
 FROM node:18-alpine AS builder
+
+# Establecer el directorio de trabajo una vez
 WORKDIR /app
 
-# Copia los package.json de la carpeta frontend
+# Copiar solo los package.json para aprovechar el caché
 COPY frontend/package.json frontend/package-lock.json ./
 
-# Instala las dependencias del frontend
+# Instalar dependencias del frontend. NPM se ejecutará en /app donde está el package.json
 RUN npm install
 
-# Copia todo el código del proyecto
-COPY . .
+# Copiar el resto del código del frontend a una subcarpeta
+COPY frontend/ ./frontend/
 
-# Ejecuta el build DENTRO de la carpeta frontend
-RUN cd frontend && npm run build
+# Ejecutar el build. Vite sabrá qué hacer porque package.json está aquí.
+# El output irá a /app/dist
+RUN npm run build
 
 
 # ---- Etapa 2: Servidor de Producción ----
 FROM nginx:alpine
 
-# Copia el build resultante de la etapa anterior a la carpeta de Nginx
-COPY --from=builder /app/frontend/dist /usr/share/nginx/html
+# Copiar el build resultante de /app/dist a la carpeta de Nginx
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copia el archivo de configuración de Nginx para React Router
+# Copiar nuestro archivo de configuración personalizado de Nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
