@@ -1,31 +1,32 @@
 # ---- Etapa 1: Build ----
-FROM node:18-alpine AS builder
+# CORRECCIÓN 1: Usamos una versión de Node compatible con tu Vite
+FROM node:20-alpine AS builder
 
-# Establecer el directorio de trabajo una vez
+# Establecemos el directorio de trabajo
 WORKDIR /app
 
-# Copiar solo los package.json para aprovechar el caché
-COPY frontend/package.json frontend/package-lock.json ./
+# CORRECCIÓN 2: Simplificamos la copia.
+# Copiamos solo el contenido de la carpeta 'frontend' al directorio de trabajo.
+# Ahora, la raíz del build (/app) es efectivamente tu carpeta 'frontend'.
+COPY frontend/ .
 
-# Instalar dependencias del frontend. NPM se ejecutará en /app donde está el package.json
+# Instalamos las dependencias. 'npm' encontrará el 'package.json' en /app.
 RUN npm install
 
-# Copiar el resto del código del frontend a una subcarpeta
-COPY frontend/ ./frontend/
-
-# Ejecutar el build. Vite sabrá qué hacer porque package.json está aquí.
-# El output irá a /app/dist
+# Ejecutamos el build. Vite encontrará el 'index.html' en /app.
+# El resultado se creará en /app/dist.
 RUN npm run build
 
 
-# ---- Etapa 2: Servidor de Producción ----
+# ---- Etapa 2: Servidor de Producción (Sin cambios) ----
 FROM nginx:alpine
 
-# Copiar el build resultante de /app/dist a la carpeta de Nginx
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copiar nuestro archivo de configuración personalizado de Nginx
+# Copiamos nuestro archivo de configuración personalizado de Nginx.
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copiamos los archivos estáticos construidos desde la etapa 'builder'.
+# Esta ruta ahora es correcta y simple.
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
