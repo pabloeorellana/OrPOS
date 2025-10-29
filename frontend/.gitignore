@@ -21,3 +21,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Ignora todo dentro de 'dist', EXCEPTO el contenido importante
+/dist/*
+
+# ¡PERO NO ignores el 'index.html' ni la carpeta de 'assets'!
+!/dist/index.html
+!/dist/assets/
