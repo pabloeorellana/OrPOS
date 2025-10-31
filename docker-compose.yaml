@@ -1,32 +1,18 @@
-version: "3.9"
+version: "3.8"
 
 services:
-  frontend:
+  orpos-frontend:
+    build: .
     container_name: orpos-frontend
-    build:
-      context: .
-      dockerfile: Dockerfile
     restart: always
     networks:
-      - coolify
+      - coolify-infra
     labels:
-      # --- Traefik Integration ---
-      traefik.enable: "true"
-      traefik.docker.network: "coolify"
-
-      # --- HTTP Router (HTTPS via Let's Encrypt) ---
-      traefik.http.routers.orpos.rule: "Host(`orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
-      traefik.http.routers.orpos.entrypoints: "websecure"
-      traefik.http.routers.orpos.tls: "true"
-      traefik.http.routers.orpos.tls.certresolver: "letsencrypt"
-
-      # --- Service ---
-      traefik.http.services.orpos.loadbalancer.server.port: "80"
-
-      # --- Middlewares 2 ---
-      traefik.http.middlewares.redirect-to-https.redirectscheme.scheme: "https"
-      traefik.http.middlewares.gzip.compress: "true"
+      - "traefik.enable=true"
+      - "traefik.http.routers.orpos.rule=Host(`orpos.site`)"
+      - "traefik.http.routers.orpos.entrypoints=web"
+      - "traefik.http.services.orpos.loadbalancer.server.port=80"
 
 networks:
-  coolify:
+  coolify-infra:
     external: true
