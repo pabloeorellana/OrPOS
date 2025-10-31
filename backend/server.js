@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const { protect } = require('./middleware/authMiddleware');
 
+// Rutas
 const authRoutes = require('./routes/authRoutes');
 const tenantPublicRoutes = require('./routes/tenantPublicRoutes');
 const tenantRoutes = require('./routes/tenantRoutes');
@@ -25,39 +26,38 @@ const superadminRoutes = require('./routes/superadminRoutes');
 const app = express();
 
 /* --- CORS DINÁMICO PARA MULTI-TENANT --- */
-const corsOptions = {
-  origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // Permitir herramientas tipo curl o Postman
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      try {
+        const url = new URL(origin);
+        const host = url.hostname;
 
-    try {
-      const url = new URL(origin);
-      const host = url.hostname;
+        if (
+          host === 'localhost' ||
+          host === '127.0.0.1' ||
+          host === 'orpos.site' ||
+          host === 'www.orpos.site' ||
+          host.endsWith('.orpos.site')
+        ) {
+          return cb(null, true);
+        }
+      } catch (_) {}
 
-      //  Entornos permitidos
-      if (
-        host === 'localhost' ||                      // desarrollo local (Vite)
-        host === '127.0.0.1' ||                      // alternativa localhost
-        host === 'orpos.site' ||                     // dominio principal
-        host === 'www.orpos.site' ||                 // www
-        host.endsWith('.orpos.site')                 // subdominios
-      ) {
-        return cb(null, true);
-      }
-    } catch (_) {}
-
-    console.error(`CORS bloqueó origen: ${origin}`);
-    cb(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-};
-app.use(cors(corsOptions));
+      console.error(` CORS bloqueó origen: ${origin}`);
+      cb(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  })
+);
 /* --- FIN DE CORS --- */
-
 
 app.use(express.json());
 
-app.get('/api', (req, res) => {
-  res.json({ message: '¡Bienvenido a la API de OrPOS!' });
+/* --- ENDPOINT DE SALUD --- */
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', time: new Date().toISOString() });
 });
 
 /* --- RUTAS PÚBLICAS --- */
@@ -83,6 +83,12 @@ apiRouter.use('/categories', categoryRoutes);
 apiRouter.use('/settings', settingsRoutes);
 apiRouter.use('/audit', auditRoutes);
 apiRouter.use('/returns', returnRoutes);
+
+/* --- MANEJO DE ERRORES GLOBAL --- */
+app.use((err, req, res, next) => {
+  console.error('Error global:', err.message);
+  res.status(500).json({ error: err.message });
+});
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
