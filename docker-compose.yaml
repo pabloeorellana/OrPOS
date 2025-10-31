@@ -1,4 +1,4 @@
-version: "3.8"
+version: '3.8'
 
 services:
   app:
@@ -7,23 +7,28 @@ services:
       context: .
       dockerfile: Dockerfile
     image: orpos-frontend:latest
-    restart: unless-stopped
-    ports:
-      - "80"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.orpos-frontend.entrypoints=http"
-      - "traefik.http.routers.orpos-frontend.rule=Host(`orpos.site`) || Host(`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
-      - "traefik.http.routers.orpos-frontend.middlewares=https-redirect@file"
-      - "traefik.http.routers.orpos-frontend-secure.entrypoints=https"
-      - "traefik.http.routers.orpos-frontend-secure.rule=Host(`orpos.site`) || Host(`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
-      - "traefik.http.routers.orpos-frontend-secure.tls=true"
-      - "traefik.http.routers.orpos-frontend-secure.tls.certresolver=letsencrypt-dns"
-      - "traefik.http.routers.orpos-frontend-secure.service=orpos-frontend"
-      - "traefik.http.services.orpos-frontend.loadbalancer.server.port=80"
+    restart: always
     networks:
-      - coolify
+      - coolify-infra
+    labels:
+      # --- Traefik Básico ---
+      traefik.enable: "true"
+      traefik.http.routers.orpos.rule: Host(`orpos.site`) || Host(`www.orpos.site`)
+      traefik.http.routers.orpos.entrypoints: websecure
+      traefik.http.routers.orpos.tls: "true"
+      traefik.http.routers.orpos.tls.certresolver: letsencrypt
+      traefik.http.services.orpos.loadbalancer.server.port: 80
+
+      # --- Redirección www -> sin www (opcional, si querés unificar en uno solo) ---
+      traefik.http.middlewares.orpos-redirect-www.redirectregex.regex: ^https://www\.(.*)
+      traefik.http.middlewares.orpos-redirect-www.redirectregex.replacement: https://$1
+      traefik.http.middlewares.orpos-redirect-www.redirectregex.permanent: "true"
+      traefik.http.routers.orpos.middlewares: orpos-redirect-www@docker
+
+      # --- Subdominios futuros (heredan configuración base) ---
+      # ejemplo: api.orpos.site, admin.orpos.site
+      traefik.docker.network: coolify-infra
 
 networks:
-  coolify:
+  coolify-infra:
     external: true
