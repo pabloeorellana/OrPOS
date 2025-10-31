@@ -1,0 +1,24 @@
+# Ignorar dependencias pesadas
+frontend/node_modules
+frontend/.vite
+frontend/.cache
+frontend/.next
+frontend/.turbo
+
+# Ignorar archivos temporales
+*.log
+*.tmp
+*.swp
+*.DS_Store
+
+# Ignorar archivos de build locales (ya están en dist)
+frontend/build
+frontend/out
+
+# Ignorar control de versiones y configuración local
+.git
+.gitignore
+Dockerfile.build
+docker-compose.override.yml
+.env
+.env.local
