@@ -14,7 +14,7 @@ services:
       traefik.enable: "true"
       traefik.docker.network: coolify
 
-      # --- Router principal ---
+      # --- Router principal 2 ---
       traefik.http.routers.orpos.rule: Host(`orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)
       traefik.http.routers.orpos.entrypoints: https
       traefik.http.routers.orpos.tls: "true"
