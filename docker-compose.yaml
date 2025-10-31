@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   app:
-    # container_name: orpos-frontend  # <- dejar que Coolify asigne el nombre
+    container_name: orpos-frontend
     build:
       context: .
       dockerfile: Dockerfile
@@ -12,30 +12,14 @@ services:
       - coolify
     labels:
       traefik.enable: "true"
+      traefik.docker.network: coolify
 
-      traefik.http.routers.orpos-main.rule: "Host(`orpos.site`)"
-      traefik.http.routers.orpos-main.entrypoints: "websecure"
-      traefik.http.routers.orpos-main.tls: "true"
-      traefik.http.routers.orpos-main.tls.certresolver: "letsencrypt"
-      traefik.http.services.orpos-main.loadbalancer.server.port: "80"
-
-      traefik.http.routers.orpos-www.rule: "Host(`www.orpos.site`)"
-      traefik.http.routers.orpos-www.entrypoints: "websecure"
-      traefik.http.routers.orpos-www.tls: "true"
-      traefik.http.routers.orpos-www.priority: "10"
-      traefik.http.routers.orpos-www.middlewares: "redirect-to-main@docker"
-
-      traefik.http.middlewares.redirect-to-main.redirectregex.regex: "^https://www\\.(.*)"
-      traefik.http.middlewares.redirect-to-main.redirectregex.replacement: "https://$1"
-      traefik.http.middlewares.redirect-to-main.redirectregex.permanent: "true"
-
-      traefik.http.routers.orpos-wildcard.rule: "HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
-      traefik.http.routers.orpos-wildcard.entrypoints: "websecure"
-      traefik.http.routers.orpos-wildcard.tls: "true"
-      traefik.http.routers.orpos-wildcard.tls.certresolver: "letsencrypt"
-      traefik.http.services.orpos-wildcard.loadbalancer.server.port: "80"
-
-      traefik.docker.network: "coolify"
+      # --- Router principal ---
+      traefik.http.routers.orpos.rule: Host(`orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)
+      traefik.http.routers.orpos.entrypoints: websecure
+      traefik.http.routers.orpos.tls: "true"
+      traefik.http.routers.orpos.tls.certresolver: letsencrypt
+      traefik.http.services.orpos.loadbalancer.server.port: 80
 
 networks:
   coolify:
