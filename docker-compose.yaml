@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  app:
+    container_name: orpos-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: orpos-frontend:latest
+    restart: unless-stopped
+    ports:
+      - "80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.orpos-frontend.entrypoints=http"
+      - "traefik.http.routers.orpos-frontend.rule=Host(`orpos.site`) || Host(`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
+      - "traefik.http.routers.orpos-frontend.middlewares=https-redirect@file"
+      - "traefik.http.routers.orpos-frontend-secure.entrypoints=https"
+      - "traefik.http.routers.orpos-frontend-secure.rule=Host(`orpos.site`) || Host(`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
+      - "traefik.http.routers.orpos-frontend-secure.tls=true"
+      - "traefik.http.routers.orpos-frontend-secure.tls.certresolver=letsencrypt-dns"
+      - "traefik.http.routers.orpos-frontend-secure.service=orpos-frontend"
+      - "traefik.http.services.orpos-frontend.loadbalancer.server.port=80"
+    networks:
+      - coolify
+
+networks:
+  coolify:
+    external: true
