@@ -1,7 +1,7 @@
 FROM nginx:stable-alpine
 
 # Copia el build local (ya compilado en tu máquina)
-COPY ./dist /usr/share/nginx/html
+COPY ./frontend/dist /usr/share/nginx/html
 
 # Configuración Nginx personalizada para SPA (React/Vite)
 RUN rm /etc/nginx/conf.d/default.conf
