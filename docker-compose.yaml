@@ -34,6 +34,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args: # <-- Añadir esta sección de argumentos
+        # Coolify cogerá la VITE_API_URL de los secretos y la pasará aquí
+        - VITE_API_URL=${VITE_API_URL}
     restart: always
     networks:
       - coolify
