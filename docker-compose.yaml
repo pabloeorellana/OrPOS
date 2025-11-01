@@ -21,6 +21,7 @@ services:
       - coolify
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
       - "traefik.http.routers.orpos-backend-http.rule=Host(`api.orpos.site`)"
       - "traefik.http.routers.orpos-backend-http.entrypoints=http"
       - "traefik.http.routers.orpos-backend-http.middlewares=https-redirect"
@@ -41,6 +42,7 @@ services:
       - coolify
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
       - "traefik.http.routers.orpos-frontend-http.rule=Host(`orpos.site`,`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
       - "traefik.http.routers.orpos-frontend-http.entrypoints=http"
       - "traefik.http.routers.orpos-frontend-http.middlewares=https-redirect"
