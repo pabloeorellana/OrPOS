@@ -54,7 +54,7 @@ services:
       - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].sans=*.orpos.site"
       - "traefik.http.routers.orpos-frontend-secure.service=orpos-frontend-service"
       - "traefik.http.services.orpos-frontend-service.loadbalancer.server.port=80"
-      
+      - "traefik.http.routers.orpos-frontend-secure.middlewares=test-middleware"
       - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
 
 networks:
