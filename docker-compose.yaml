@@ -17,19 +17,20 @@ services:
       - "JWT_SECRET=${JWT_SECRET}"
       - "FRONTEND_URL=https://orpos.site"
     networks:
-      - coolify
+      - projectnet
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=coolify"
-      # Middlewares y Rutas
+      - "traefik.docker.network=projectnet"
+
       - "traefik.http.middlewares.orpos-backend-redirect.redirectscheme.scheme=https"
       - "traefik.http.routers.orpos-backend-http.rule=Host(`api.orpos.site`)"
       - "traefik.http.routers.orpos-backend-http.entrypoints=http"
       - "traefik.http.routers.orpos-backend-http.middlewares=orpos-backend-redirect"
+
       - "traefik.http.routers.orpos-backend-secure.rule=Host(`api.orpos.site`)"
       - "traefik.http.routers.orpos-backend-secure.entrypoints=https"
       - "traefik.http.routers.orpos-backend-secure.tls=true"
-      - "traefik.http.routers.orpos-backend-secure.tls.certresolver=letsencrypt" # El backend no necesita wildcard
+      - "traefik.http.routers.orpos-backend-secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.orpos-backend-secure.service=orpos-backend-service"
       - "traefik.http.services.orpos-backend-service.loadbalancer.server.port=3001"
 
@@ -40,17 +41,17 @@ services:
       dockerfile: Dockerfile
     restart: always
     networks:
-      - coolify
+      - projectnet
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=coolify"
-      # Middlewares
+      - "traefik.docker.network=projectnet"
+
       - "traefik.http.middlewares.orpos-frontend-redirect.redirectscheme.scheme=https"
-      # Router HTTP
+
       - "traefik.http.routers.orpos-frontend-http.rule=Host(`orpos.site`) || Host(`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
       - "traefik.http.routers.orpos-frontend-http.entrypoints=http"
       - "traefik.http.routers.orpos-frontend-http.middlewares=orpos-frontend-redirect"
-      # Router HTTPS
+
       - "traefik.http.routers.orpos-frontend-secure.rule=Host(`orpos.site`) || Host(`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
       - "traefik.http.routers.orpos-frontend-secure.entrypoints=https"
       - "traefik.http.routers.orpos-frontend-secure.tls=true"
@@ -58,9 +59,10 @@ services:
       - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].main=orpos.site"
       - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].sans=*.orpos.site"
       - "traefik.http.routers.orpos-frontend-secure.service=orpos-frontend-service"
-      # Service
+
       - "traefik.http.services.orpos-frontend-service.loadbalancer.server.port=80"
 
 networks:
-  coolify:
+  projectnet:
     external: true
+    name: kwk40gwo8oow4swk4sw8g4oo
