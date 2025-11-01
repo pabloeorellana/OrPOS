@@ -1,22 +1,20 @@
 version: '3.8'
 
 services:
-  # --- SERVICIO DE BACKEND ---
   orpos-backend:
     build:
-      context: . # El contexto es la raíz del repositorio
-      dockerfile: ./backend/Dockerfile # Necesitamos un Dockerfile para el backend
+      context: .
+      dockerfile: ./backend/Dockerfile
     restart: always
     environment:
-      # Coolify leerá estas variables y te permitirá llenarlas como secretos
-      - NODE_ENV=production
-      - PORT=3001
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - JWT_SECRET=${JWT_SECRET}
-      - FRONTEND_URL=${FRONTEND_URL}
+      - "NODE_ENV=production"
+      - "PORT=3001"
+      - "DB_HOST=${DB_HOST}"
+      - "DB_USER=${DB_USER}"
+      - "DB_PASSWORD=${DB_PASSWORD}"
+      - "DB_NAME=${DB_NAME}"
+      - "JWT_SECRET=${JWT_SECRET}"
+      - "FRONTEND_URL=${FRONTEND_URL}"
     networks:
       - coolify
     labels:
@@ -31,12 +29,11 @@ services:
       - "traefik.http.routers.orpos-backend-secure.tls.certresolver=letsencrypt"
       - "traefik.http.routers.orpos-backend-secure.service=orpos-backend-service"
       - "traefik.http.services.orpos-backend-service.loadbalancer.server.port=3001"
-
-  # --- SERVICIO DE FRONTEND ---
+  
   orpos-frontend:
     build:
       context: .
-      dockerfile: Dockerfile # Usa el Dockerfile de la raíz (el que construye el frontend)
+      dockerfile: Dockerfile
     restart: always
     networks:
       - coolify
@@ -47,7 +44,7 @@ services:
       - "traefik.http.routers.orpos-frontend-http.entrypoints=http"
       - "traefik.http.routers.orpos-frontend-http.middlewares=https-redirect"
       - "traefik.http.routers.orpos-frontend-secure.rule=Host(`orpos.site`,`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
-      - "traefik.http.routers.orpos-frontend-secure.entrypoints=https"
+      - "traefik.http.routers.orpos-frontend-secure.entrypoints=httpss"
       - "traefik.http.routers.orpos-frontend-secure.tls=true"
       - "traefik.http.routers.orpos-frontend-secure.tls.certresolver=letsencrypt-dns"
       - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].main=orpos.site"
