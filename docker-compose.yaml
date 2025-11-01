@@ -8,6 +8,8 @@ services:
     container_name: orpos-frontend
     image: orpos-frontend:latest
     restart: always
+    networks:
+      - coolify-infra
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.orpos.rule=Host(`orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
@@ -15,3 +17,7 @@ services:
       - "traefik.http.routers.orpos.tls=true"
       - "traefik.http.routers.orpos.tls.certresolver=letsencrypt"
       - "traefik.http.services.orpos.loadbalancer.server.port=80"
+
+networks:
+  coolify-infra:
+    external: true

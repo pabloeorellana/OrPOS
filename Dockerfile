@@ -1,13 +1,13 @@
 FROM nginx:stable-alpine
 
-# Copia el build local ya generado (frontend/dist)
+# Copiar el build real desde frontend/dist
 COPY ./frontend/dist /usr/share/nginx/html
 
-# Configuración personalizada para SPA (React/Vite)
+# Reemplazar la configuración por defecto
 RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Etiquetas Traefik
+# Etiquetas Traefik para HTTPS
 LABEL traefik.enable="true"
 LABEL traefik.http.routers.orpos.rule="Host(`orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
 LABEL traefik.http.routers.orpos.entrypoints="websecure"
