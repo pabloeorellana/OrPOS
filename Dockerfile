@@ -1,12 +1,12 @@
 # Imagen base
 FROM nginx:stable-alpine
 
-# Copiar el build local (ya generado con npm run build)
+# Copiar el build generado por Vite (frontend/dist)
 COPY ./frontend/dist /usr/share/nginx/html
 
-# Reemplazar configuración por la personalizada (SPA React/Vite)
+# Reemplazar la configuración por una personalizada
 RUN rm /etc/nginx/conf.d/default.conf
 COPY ./frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Exponer puerto HTTP (para Traefik)
+# Exponer puerto HTTP
 EXPOSE 80
