@@ -12,10 +12,20 @@ services:
       - coolify-infra
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.orpos.rule=Host(`orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
-      - "traefik.http.routers.orpos.entrypoints=https"
+
+      # Router principal (dominio raíz)
+      - "traefik.http.routers.orpos.rule=Host(`orpos.site`)"
+      - "traefik.http.routers.orpos.entrypoints=websecure"
       - "traefik.http.routers.orpos.tls=true"
       - "traefik.http.routers.orpos.tls.certresolver=letsencrypt"
+
+      # Router wildcard para subdominios (*.orpos.site)
+      - "traefik.http.routers.orpos-wildcard.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
+      - "traefik.http.routers.orpos-wildcard.entrypoints=websecure"
+      - "traefik.http.routers.orpos-wildcard.tls=true"
+      - "traefik.http.routers.orpos-wildcard.tls.certresolver=letsencrypt"
+
+      # Servicio compartido
       - "traefik.http.services.orpos.loadbalancer.server.port=80"
 
 networks:
