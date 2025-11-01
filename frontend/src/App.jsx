@@ -60,15 +60,16 @@ function App() {
     
     // Si no hay usuario, determinamos a qué login enviarlo
     const subdomain = getSubdomain();
-    if (subdomain) {
-      // Si hay un subdominio, vamos directamente a la página de login (la URL ya es correcta)
-      // Preservamos los query params por si acaso
-      return <Navigate to={`/login${window.location.search}`} replace />;
-    }
-    
-    // Si no hay subdominio, vamos al login principal/superadmin
-    return <Navigate to="/login" replace />;
-  };
+
+if (subdomain && subdomain !== 'www' && subdomain !== '') {
+  console.debug(`Subdominio detectado: ${subdomain}`);
+  return <Navigate to={`/login${window.location.search}`} replace />;
+}
+
+// Sin subdominio → dominio principal
+console.debug('Acceso desde dominio principal (orpos.site)');
+return <Navigate to="/login" replace />;
+  }
 
   return (
     <Routes>
