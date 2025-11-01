@@ -1,43 +1,6 @@
 version: '3.8'
 
 services:
-  # --- SERVICIO DE BACKEND ---
-  orpos-backend:
-    build:
-      context: .
-      dockerfile: ./backend/Dockerfile
-    restart: always
-    environment:
-      # Las variables se rellenarán desde los secretos de Coolify
-      - "NODE_ENV=production"
-      - "PORT=3001"
-      - "DB_HOST=${DB_HOST}"
-      - "DB_USER=${DB_USER}"
-      - "DB_PASSWORD=${DB_PASSWORD}"
-      - "DB_NAME=${DB_NAME}"
-      - "JWT_SECRET=${JWT_SECRET}"
-      - "FRONTEND_URL=${FRONTEND_URL}"
-    networks:
-      - coolify
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=coolify"
-      # Middlewares
-      - "traefik.http.middlewares.orpos-https-redirect-backend.redirectscheme.scheme=https"
-      # Router HTTP
-      - "traefik.http.routers.orpos-backend-http.rule=Host(`api.orpos.site`)"
-      - "traefik.http.routers.orpos-backend-http.entrypoints=http"
-      - "traefik.http.routers.orpos-backend-http.middlewares=orpos-https-redirect-backend"
-      # Router HTTPS
-      - "traefik.http.routers.orpos-backend-secure.rule=Host(`api.orpos.site`)"
-      - "traefik.http.routers.orpos-backend-secure.entrypoints=https"
-      - "traefik.http.routers.orpos-backend-secure.tls=true"
-      - "traefik.http.routers.orpos-backend-secure.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.orpos-backend-secure.service=orpos-backend-service"
-      # Service
-      - "traefik.http.services.orpos-backend-service.loadbalancer.server.port=3001"
-
-  # --- SERVICIO DE FRONTEND ---
   orpos-frontend:
     build:
       context: .
@@ -47,25 +10,18 @@ services:
       - coolify
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=coolify"
-      # Middlewares
-      - "traefik.http.middlewares.orpos-https-redirect-frontend.redirectscheme.scheme=https"
-      # Router HTTP
-      - "traefik.http.routers.orpos-frontend-http.rule=Host(`orpos.site`,`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
-      - "traefik.http.routers.orpos-frontend-http.entrypoints=http"
-      - "traefik.http.routers.orpos-frontend-http.middlewares=orpos-https-redirect-frontend"
-      # Router HTTPS
-      - "traefik.http.routers.orpos-frontend-secure.rule=Host(`orpos.site`,`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
-      - "traefik.http.routers.orpos-frontend-secure.entrypoints=https" # Corregido de 'httpss'
-      - "traefik.http.routers.orpos-frontend-secure.tls=true"
-      - "traefik.http.routers.orpos-frontend-secure.tls.certresolver=letsencrypt-dns"
-      - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].main=orpos.site"
-      - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].sans=*.orpos.site"
-      - "traefik.http.routers.orpos-frontend-secure.service=orpos-frontend-service"
-      # Service
-      - "traefik.http.services.orpos-frontend-service.loadbalancer.server.port=80"
 
-# Red externa a la que se conectarán
+      # --- ROUTER MINIMALISTA ---
+      # Solo escucha en el dominio principal, sin subdominios, sin www, sin redirección.
+      - "traefik.http.routers.orpos-frontend.rule=Host(`orpos.site`)"
+      - "traefik.http.routers.orpos-frontend.entrypoints=https"
+      - "traefik.http.routers.orpos-frontend.tls=true"
+      - "traefik.http.routers.orpos-frontend.tls.certresolver=letsencrypt" # Usamos el HTTP challenge normal
+      - "traefik.http.routers.orpos-frontend.service=orpos-frontend-svc"
+      
+      # --- SERVICE MINIMALISTA ---
+      - "traefik.http.services.orpos-frontend-svc.loadbalancer.server.port=80"
+
 networks:
   coolify:
     external: true
