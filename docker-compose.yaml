@@ -8,7 +8,7 @@ services:
       dockerfile: ./backend/Dockerfile
     restart: always
     environment:
-      # Coolify leerá estas variables y te permitirá llenarlas como secretos
+      # Las variables se rellenarán desde los secretos de Coolify
       - "NODE_ENV=production"
       - "PORT=3001"
       - "DB_HOST=${DB_HOST}"
@@ -22,20 +22,20 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=coolify"
-
-      # Router HTTP (redirige a HTTPS)
+      # Middlewares
+      - "traefik.http.middlewares.orpos-https-redirect-backend.redirectscheme.scheme=https"
+      # Router HTTP
       - "traefik.http.routers.orpos-backend-http.rule=Host(`api.orpos.site`)"
       - "traefik.http.routers.orpos-backend-http.entrypoints=http"
-      - "traefik.http.routers.orpos-backend-http.middlewares=https-redirect"
-
-      # Router HTTPS principal (NO especificamos 'service')
+      - "traefik.http.routers.orpos-backend-http.middlewares=orpos-https-redirect-backend"
+      # Router HTTPS
       - "traefik.http.routers.orpos-backend-secure.rule=Host(`api.orpos.site`)"
       - "traefik.http.routers.orpos-backend-secure.entrypoints=https"
       - "traefik.http.routers.orpos-backend-secure.tls=true"
       - "traefik.http.routers.orpos-backend-secure.tls.certresolver=letsencrypt"
-
-      # El servicio se define implícitamente por el puerto del contenedor.
-      # No necesitamos la línea `loadbalancer.server.port` porque solo hay uno.
+      - "traefik.http.routers.orpos-backend-secure.service=orpos-backend-service"
+      # Service
+      - "traefik.http.services.orpos-backend-service.loadbalancer.server.port=3001"
 
   # --- SERVICIO DE FRONTEND ---
   orpos-frontend:
@@ -48,24 +48,24 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=coolify"
-
-      # Router HTTP (redirige a HTTPS)
+      # Middlewares
+      - "traefik.http.middlewares.orpos-https-redirect-frontend.redirectscheme.scheme=https"
+      # Router HTTP
       - "traefik.http.routers.orpos-frontend-http.rule=Host(`orpos.site`,`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
       - "traefik.http.routers.orpos-frontend-http.entrypoints=http"
-      - "traefik.http.routers.orpos-frontend-http.middlewares=https-redirect"
-      
-      # Router HTTPS principal (NO especificamos 'service')
+      - "traefik.http.routers.orpos-frontend-http.middlewares=orpos-https-redirect-frontend"
+      # Router HTTPS
       - "traefik.http.routers.orpos-frontend-secure.rule=Host(`orpos.site`,`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
-      - "traefik.http.routers.orpos-frontend-secure.entrypoints=httpss"
+      - "traefik.http.routers.orpos-frontend-secure.entrypoints=https" # Corregido de 'httpss'
       - "traefik.http.routers.orpos-frontend-secure.tls=true"
       - "traefik.http.routers.orpos-frontend-secure.tls.certresolver=letsencrypt-dns"
       - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].main=orpos.site"
       - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].sans=*.orpos.site"
+      - "traefik.http.routers.orpos-frontend-secure.service=orpos-frontend-service"
+      # Service
+      - "traefik.http.services.orpos-frontend-service.loadbalancer.server.port=80"
 
-      # Middleware de redirección (definido en este servicio para evitar conflictos)
-      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
-      
-# Definimos la red a la que se deben conectar, que debe ser la red del proxy de Coolify
+# Red externa a la que se conectarán
 networks:
   coolify:
     external: true
