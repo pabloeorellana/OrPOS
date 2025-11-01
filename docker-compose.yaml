@@ -10,22 +10,22 @@ services:
       - coolify
     labels:
       - "traefik.enable=true"
-
-      # --- MIDDLEWARE (Para redirigir a HTTPS) ---
+      
+      # --- MIDDLEWARE ---
       - "traefik.http.middlewares.orpos-redirect-https.redirectscheme.scheme=https"
       
-      # --- ROUTER PARA HTTP (tráfico inseguro) ---
-      # Ahora escucha en orpos.site y www.orpos.site, y su única misión es redirigir.
-      - "traefik.http.routers.orpos-frontend-http.rule=Host(`orpos.site`) || Host(`www.orpos.site`)"
+      # --- ROUTER HTTP (¡CON HOSTREGEX!) ---
+      - "traefik.http.routers.orpos-frontend-http.rule=Host(`orpos.site`) || Host(`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
       - "traefik.http.routers.orpos-frontend-http.entrypoints=http"
       - "traefik.http.routers.orpos-frontend-http.middlewares=orpos-redirect-https"
 
-      # --- ROUTER PARA HTTPS (el principal, seguro) ---
-      # Ahora escucha en orpos.site y www.orpos.site.
-      - "traefik.http.routers.orpos-frontend-secure.rule=Host(`orpos.site`) || Host(`www.orpos.site`)"
+      # --- ROUTER HTTPS (¡CON HOSTREGEX Y DNS-CHALLENGE!) ---
+      - "traefik.http.routers.orpos-frontend-secure.rule=Host(`orpos.site`) || Host(`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
       - "traefik.http.routers.orpos-frontend-secure.entrypoints=https"
       - "traefik.http.routers.orpos-frontend-secure.tls=true"
-      - "traefik.http.routers.orpos-frontend-secure.tls.certresolver=letsencrypt" # Seguimos con el challenge HTTP
+      - "traefik.http.routers.orpos-frontend-secure.tls.certresolver=letsencrypt-dns" # Volvemos al DNS challenge
+      - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].main=orpos.site"
+      - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].sans=*.orpos.site"
       - "traefik.http.routers.orpos-frontend-secure.service=orpos-frontend-svc"
       
       # --- SERVICE ---
