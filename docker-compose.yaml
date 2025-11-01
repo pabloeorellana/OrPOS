@@ -1,34 +1,36 @@
 version: '3.8'
 
 services:
-  frontend:
+  # Nombra el servicio. Coolify usará esto como base para los nombres.
+  orpos-frontend:
+    # 'build:' le dice a Docker cómo construir la imagen.
     build:
+      # 'context: .' significa que Docker usará el directorio raíz del repositorio como contexto de construcción.
       context: .
+      # Apunta al archivo 'Dockerfile' que crearemos.
       dockerfile: Dockerfile
-    image: orpos-frontend:latest
-    container_name: orpos-frontend
     restart: always
+    # Conecta este servicio a la red principal del proxy de Coolify
     networks:
-      - coolify-infra
+      - coolify
+    
+    # Etiquetas de Traefik para enrutar el tráfico a este servicio.
+    # Son las mismas que hemos estado refinando.
     labels:
       - "traefik.enable=true"
-
-      # dominio principal
-      - "traefik.http.routers.orpos.rule=Host(`orpos.site`)"
-      - "traefik.http.routers.orpos.entrypoints=https"
-      - "traefik.http.routers.orpos.tls=true"
-      - "traefik.http.routers.orpos.tls.certresolver=letsencrypt"
-
-      # wildcard
-      - "traefik.http.routers.orpos-wildcard.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
-      - "traefik.http.routers.orpos-wildcard.entrypoints=https"
-      - "traefik.http.routers.orpos-wildcard.tls=true"
-      - "traefik.http.routers.orpos-wildcard.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.orpos-wildcard.service=orpos"
-
-      # servicio compartido
-      - "traefik.http.services.orpos.loadbalancer.server.port=80"
+      - "traefik.http.services.orpos-frontend-service.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.orpos-redirect-scheme.redirectscheme.scheme=https"
+      - "traefik.http.routers.orpos-frontend-http.rule=Host(`orpos.site`,`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
+      - "traefik.http.routers.orpos-frontend-http.entrypoints=http"
+      - "traefik.http.routers.orpos-frontend-http.middlewares=orpos-redirect-scheme"
+      - "traefik.http.routers.orpos-frontend-secure.rule=Host(`orpos.site`,`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
+      - "traefik.http.routers.orpos-frontend-secure.entrypoints=https"
+      - "traefik.http.routers.orpos-frontend-secure.tls=true"
+      - "traefik.http.routers.orpos-frontend-secure.tls.certresolver=letsencrypt-dns" # Usamos DNS-Challenge
+      - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].main=orpos.site"
+      - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].sans=*.orpos.site"
+      - "traefik.http.routers.orpos-frontend-secure.service=orpos-frontend-service@docker"
 
 networks:
-  coolify-infra:
+  coolify:
     external: true

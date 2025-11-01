@@ -1,12 +1,19 @@
-# Imagen base
+# Usa una imagen oficial de Nginx, ligera y estable
 FROM nginx:stable-alpine
 
-# Copiar el build del frontend al directorio de Nginx
-COPY ./frontend/dist /usr/share/nginx/html
-
-# Reemplazar la configuración por la tuya (en raíz)
+# Elimina la configuración por defecto de Nginx
 RUN rm /etc/nginx/conf.d/default.conf
-COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 
-# Exponer puerto HTTP
+# Copia tu archivo de configuración personalizado
+# Este archivo DEBE existir en la misma carpeta que este Dockerfile
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copia el contenido de tu carpeta 'dist' pre-construida
+# Docker buscará una carpeta 'frontend/dist' dentro del contexto de construcción (la raíz del repo)
+COPY frontend/dist /usr/share/nginx/html
+
+# Expone el puerto 80 que es el que Nginx escucha
 EXPOSE 80
+
+# Comando para iniciar Nginx en primer plano (requerido por Docker)
+CMD ["nginx", "-g", "daemon off;"]
