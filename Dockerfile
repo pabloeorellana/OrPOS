@@ -1,19 +1,23 @@
-# Usa una imagen oficial de Nginx, ligera y estable
+# ---- Etapa 1: Build ----
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ .
+WORKDIR /app/frontend
+RUN npm run build
+
+# ---- Etapa 2: Servidor de Producción ----
 FROM nginx:stable-alpine
 
-# Elimina la configuración por defecto de Nginx
-RUN rm /etc/nginx/conf.d/default.conf
-
-# Copia tu archivo de configuración personalizado
-# Este archivo DEBE existir en la misma carpeta que este Dockerfile
+# Copiamos la configuración de Nginx.
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copia el contenido de tu carpeta 'dist' pre-construida
-# Docker buscará una carpeta 'frontend/dist' dentro del contexto de construcción (la raíz del repo)
-COPY frontend/dist /usr/share/nginx/html
+# ELIMINAMOS la carpeta HTML por defecto de Nginx, para evitar conflictos.
+RUN rm -rf /usr/share/nginx/html/*
 
-# Expone el puerto 80 que es el que Nginx escucha
+# Copiamos el CONTENIDO de nuestro 'dist' a la carpeta HTML.
+COPY --from=builder /app/frontend/dist /usr/share/nginx/html
+
 EXPOSE 80
-
-# Comando para iniciar Nginx en primer plano (requerido por Docker)
 CMD ["nginx", "-g", "daemon off;"]
