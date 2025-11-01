@@ -1,10 +1,12 @@
+version: '3.8'
+
 services:
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: orpos-frontend
     image: orpos-frontend:latest
+    container_name: orpos-frontend
     restart: always
     networks:
       - coolify-infra
