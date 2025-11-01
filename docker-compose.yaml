@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   frontend:
     build:
@@ -9,5 +11,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.orpos.rule=Host(`orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
-      - "traefik.http.routers.orpos.entrypoints=web"
+      - "traefik.http.routers.orpos.entrypoints=websecure"
+      - "traefik.http.routers.orpos.tls=true"
+      - "traefik.http.routers.orpos.tls.certresolver=letsencrypt"
       - "traefik.http.services.orpos.loadbalancer.server.port=80"
