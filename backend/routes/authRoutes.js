@@ -8,36 +8,40 @@ require('dotenv').config();
 const router = express.Router();
 
 router.post('/login', async (req, res) => {
-    const { username, password, subdomain } = req.body;
+    // AHORA RECIBIMOS 'tenantPath' en lugar de 'subdomain'
+    const { username, password, tenantPath } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Usuario y contraseña son requeridos.' });
     }
 
     try {
-        let userQuery;
-        let userParams;
+        let user;
         
-        if (subdomain) {
-            userQuery = `
+        // Si no se proporciona tenantPath, es un login de Superadmin
+        if (!tenantPath) {
+            const [users] = await db.query(
+                'SELECT u.*, r.name as role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ? AND u.tenant_id IS NULL',
+                [username]
+            );
+            if (users.length === 0) {
+                return res.status(401).json({ message: 'Credenciales inválidas.' });
+            }
+            user = users[0];
+        } else {
+            // Login para un tenant específico, usando 'subdomain' (que usamos como path)
+            const query = `
                 SELECT u.*, r.name as role_name, t.status as tenant_status, t.subscription_ends_at
                 FROM users u 
-                LEFT JOIN tenants t ON u.tenant_id = t.id
+                JOIN tenants t ON u.tenant_id = t.id
                 LEFT JOIN roles r ON u.role_id = r.id
                 WHERE u.username = ? AND t.subdomain = ?
             `;
-            userParams = [username, subdomain];
-        } else {
-            userQuery = 'SELECT * FROM users WHERE username = ? AND tenant_id IS NULL';
-            userParams = [username];
+            const [users] = await db.query(query, [username, tenantPath]);
+            if (users.length === 0) {
+                return res.status(401).json({ message: 'Credenciales inválidas para este negocio.' });
+            }
+            user = users[0];
         }
-
-        const [users] = await db.query(userQuery, userParams);
-
-        if (users.length === 0) {
-            return res.status(401).json({ message: 'Credenciales inválidas.' });
-        }
-        
-        const user = users[0];
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
