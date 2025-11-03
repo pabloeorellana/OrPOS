@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # Nombramos al servicio de forma única, ej: 'web'
+  orpos-web-frontend:
+    build:
+      context: . # El contexto es la raíz del repositorio
+      dockerfile: Dockerfile # Usa el Dockerfile principal (que construye el frontend)
+    restart: always
+    networks:
+      - coolify # Se conecta a la red principal
+    labels:
+      # --- ¡LA MAGIA! Las etiquetas ahora viven aquí, a salvo en Git ---
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
+      - "traefik.http.services.orpos-frontend-service.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.orpos-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.orpos-frontend-http.rule=Host(`orpos.site`,`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
+      - "traefik.http.routers.orpos-frontend-http.entrypoints=http"
+      - "traefik.http.routers.orpos-frontend-http.middlewares=orpos-https-redirect"
+      - "traefik.http.routers.orpos-frontend-secure.rule=Host(`orpos.site`,`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
+      - "traefik.http.routers.orpos-frontend-secure.entrypoints=https"
+      - "traefik.http.routers.orpos-frontend-secure.tls=true"
+      - "traefik.http.routers.orpos-frontend-secure.tls.certresolver=letsencrypt-dns"
+      - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].main=orpos.site"
+      - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].sans=*.orpos.site"
+      - "traefik.http.routers.orpos-frontend-secure.service=orpos-frontend-service"
+
+# La red a la que nos conectamos. Debe existir en el entorno de Coolify.
+networks:
+  coolify:
+    external: true
