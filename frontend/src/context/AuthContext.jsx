@@ -1,6 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSubdomain } from '../utils/subdomain.js';
 // Reemplazamos la dependencia externa `jwt-decode` por una función pequeña
 // para decodificar el payload del JWT. Esto evita problemas de interop
 // entre diferentes formatos de export (named/default) que pueden causar
@@ -76,7 +75,7 @@ export const AuthProvider = ({ children }) => {
         setActiveShift(null);
         setIsImpersonating(false);
         // Redirigir inmediatamente al login correcto según el tenant detectado.
-        const tenant = getSubdomain();
+       // const tenant = getSubdomain(); BORRAR ESTA LINEA
         if (tenant) {
             navigate(`/tenant-login?tenant=${encodeURIComponent(tenant)}`, { replace: true });
         } else {
