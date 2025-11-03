@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Box, CircularProgress } from '@mui/material';
-import { getSubdomain } from '../utils/subdomain.js';
+import { getTenantFromPath } from '../utils/tenantHelper.js';
 
 const ProtectedRoute = ({ children }) => {
     const { user, isAuthLoading } = useAuth();
@@ -21,7 +21,7 @@ const ProtectedRoute = ({ children }) => {
     // Si hay un subdominio detectado (o guardado en sessionStorage en dev),
     // redirigimos al login del tenant; si no, al login del superadmin.
     if (!user) {
-        const tenant = getSubdomain();
+        const tenant = getTenantFromPath();
         if (tenant) {
             return <Navigate to={`/tenant-login?tenant=${encodeURIComponent(tenant)}`} state={{ from: location }} replace />;
         }
