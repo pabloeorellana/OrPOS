@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TextField, Button, Typography, Box, Alert, Paper, Avatar, CssBaseline, CircularProgress } from '@mui/material';
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
-import { useAuth, TenantContext } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/axios';
 import { useNavigate, useParams } from 'react-router-dom';
 
