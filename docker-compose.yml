@@ -1,45 +1,45 @@
 version: '3.8'
 
 services:
-  orpos-frontend:
+  # Servicio del Frontend. Lo llamaremos 'web' para simplificar.
+  web:
     build:
-      context: .
+      # El 'contexto' es el directorio actual (la raíz del repo), 
+      # donde está este archivo y el Dockerfile.
+      context: . 
+      # Apunta al Dockerfile en el directorio actual.
       dockerfile: Dockerfile
-      # Pasa la variable VITE_API_URL desde Coolify al proceso de build de Docker
       args:
+        # Pasa la variable VITE_API_URL desde los secretos de Coolify al build.
         VITE_API_URL: ${VITE_API_URL}
     restart: always
     networks:
       - coolify
     labels:
-      # --- CONFIGURACIÓN GENERAL ---
       - "traefik.enable=true"
       - "traefik.docker.network=coolify"
       
-      # --- DEFINICIÓN DEL SERVICE DE TRAEFIK ---
-      # Le decimos a Traefik que este servicio se conecta al puerto 80 del contenedor
-      - "traefik.http.services.orpos-frontend-service.loadbalancer.server.port=80"
-
-      # --- MIDDLEWARE DE REDIRECCIÓN A HTTPS ---
-      - "traefik.http.middlewares.orpos-frontend-https-redirect.redirectscheme.scheme=https"
-
-      # --- ROUTER PARA HTTP (SÓLO REDIRIGE) ---
-      # Atrapa cualquier petición HTTP para tus dominios y la redirige a HTTPS
-      - "traefik.http.routers.orpos-frontend-http.rule=Host(`orpos.site`,`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
-      - "traefik.http.routers.orpos-frontend-http.entrypoints=http"
-      - "traefik.http.routers.orpos-frontend-http.middlewares=orpos-frontend-httpshttpsredirect"
-
-      # --- ROUTER PRINCIPAL PARA HTTPS ---
-      # Atrapa el tráfico seguro y lo dirige a tu aplicación
-      - "traefik.http.routers.orpos-frontend-secure.rule=Host(`orpos.site`,`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
-      - "traefik.http.routers.orpos-frontend-secure.entrypoints=https"
-      - "traefik.http.routers.orpos-frontend-secure.tls=true"
-      - "traefik.http.routers.orpos-frontend-secure.tls.certresolver=letsencrypt-dns" # Pide certificado wildcard
-      - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].main=orpos.site"
-      - "traefik.http.routers.orpos-frontend-secure.tls.domains[0].sans=*.orpos.site"
-      - "traefik.http.routers.orpos-frontend-secure.service=orpos-frontend-service" # Apunta al service definido arriba
+      # SERVICE
+      - "traefik.http.services.orpos-web-svc.loadbalancer.server.port=80"
+      
+      # MIDDLEWARE de Redirección
+      - "traefik.http.middlewares.orpos-https-redirect.redirectscheme.scheme=https"
+      
+      # ROUTER HTTP (para redirigir)
+      - "traefik.http.routers.orpos-web-http.rule=Host(`orpos.site`) || Host(`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
+      - "traefik.http.routers.orpos-web-http.entrypoints=http"
+      - "traefik.http.routers.orpos-web-http.middlewares=orpos-https-redirect"
+      
+      # ROUTER HTTPS (principal)
+      - "traefik.http.routers.orpos-web-secure.rule=Host(`orpos.site`) || Host(`www.orpos.site`) || HostRegexp(`{subdomain:[a-z0-9-]+}.orpos.site`)"
+      - "traefik.http.routers.orpos-web-secure.entrypoints=https"
+      - "traefik.http.routers.orpos-web-secure.tls=true"
+      - "traefik.http.routers.orpos-web-secure.tls.certresolver=letsencrypt-dns"
+      - "traefik.http.routers.orpos-web-secure.tls.domains[0].main=orpos.site"
+      - "traefik.http.routers.orpos-web-secure.tls.domains[0].sans=*.orpos.site"
+      # Apunta el router al service
+      - "traefik.http.routers.orpos-web-secure.service=orpos-web-svc"
 
 networks:
-  # Se conecta a la red externa del proxy
   coolify:
     external: true
