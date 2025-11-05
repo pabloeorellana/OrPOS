@@ -15,7 +15,7 @@ router.get('/', hasPermission('audit:view'), async (req, res) => {
                     a.id, 
                     a.timestamp, 
                     a.action, 
-                    a.details, 
+                    CAST(a.details AS CHAR) AS details,
                     u.username,
                     r.name as user_role,    -- Columna para el rol del usuario
                     t.name as tenant_name   -- Columna para el nombre del negocio

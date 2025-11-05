@@ -96,7 +96,10 @@ const NewPurchasePage = () => {
         try {
             await apiClient.post('/purchases', purchaseData);
             alert("Compra registrada exitosamente!");
-            navigate('/purchases');
+            {
+                const tenant = (window.location.pathname.split('/').filter(Boolean)[0]) || null;
+                navigate(tenant ? `/${tenant}/purchases` : '/purchases');
+            }
         } catch (error) {
             alert("Hubo un error al registrar la compra.");
         }
@@ -203,7 +206,10 @@ const NewPurchasePage = () => {
             </TableContainer>
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                <Button variant="outlined" color="secondary" onClick={() => navigate('/purchases')}>Cancelar</Button>
+                <Button variant="outlined" color="secondary" onClick={() => {
+                    const tenant = (window.location.pathname.split('/').filter(Boolean)[0]) || null;
+                    navigate(tenant ? `/${tenant}/purchases` : '/purchases');
+                }}>Cancelar</Button>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                     <Typography variant="h5">Total: ${totalAmount.toFixed(2)}</Typography>
                     <Button variant="contained" color="primary" onClick={handleSavePurchase} disabled={purchaseItems.length === 0}>Guardar Compra</Button>

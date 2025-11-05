@@ -9,11 +9,15 @@ const AuditLogPage = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        console.debug('[AuditLogPage] Mount: fetching /audit');
         apiClient.get('/audit')
-            .then(res => setLogs(res.data))
+            .then(res => {
+                console.debug('[AuditLogPage] /audit response rows:', Array.isArray(res.data) ? res.data.length : typeof res.data);
+                setLogs(Array.isArray(res.data) ? res.data : []);
+            })
             .catch(err => {
-                if (err.response?.status === 403) alert("No tienes permiso para ver esta sección.");
-                else console.error("Error fetching audit log:", err);
+                console.error('[AuditLogPage] error:', err?.response?.status, err?.response?.data || err.message);
+                if (err.response?.status === 403) alert('No tienes permiso para ver esta sección.');
             })
             .finally(() => setLoading(false));
     }, []);
@@ -23,7 +27,10 @@ const AuditLogPage = () => {
     return (
         <Box>
             <Typography variant="h4" gutterBottom>
-                {isSuperAdmin ? "Registro de Auditoría Global" : "Registro de Auditoría del Sistema"}
+                {isSuperAdmin ? 'Registro de Auditoría Global' : 'Registro de Auditoría del Sistema'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Estado: {loading ? 'cargando' : 'cargado'} | Registros: {logs?.length ?? 0}
             </Typography>
             <TableContainer component={Paper}>
                 <Table size="small">
@@ -40,32 +47,26 @@ const AuditLogPage = () => {
                     <TableBody>
                         {loading ? (
                             <TableRow><TableCell colSpan={isSuperAdmin ? 6 : 5} align="center">Cargando...</TableCell></TableRow>
+                        ) : logs.length === 0 ? (
+                            <TableRow><TableCell colSpan={isSuperAdmin ? 6 : 5} align="center">Sin registros de auditoría</TableCell></TableRow>
                         ) : (
                             logs.map((log) => (
                                 <TableRow key={log.id} hover>
                                     <TableCell>{new Date(log.timestamp).toLocaleString('es-AR')}</TableCell>
-                                    
                                     {isSuperAdmin && <TableCell>{log.tenant_name || <Chip label="Global" size="small" variant="outlined" />}</TableCell>}
-                                    
                                     <TableCell>{log.username || 'Sistema'}</TableCell>
-                                    
                                     <TableCell>
                                         {log.user_role ? <Chip label={log.user_role} size="small" /> : 'N/A'}
                                     </TableCell>
-                                    
                                     <TableCell>
                                         <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                                             {log.action}
                                         </Typography>
                                     </TableCell>
-                                    
                                     <TableCell sx={{ maxWidth: 300 }}>
-                                        {/* --- CORRECCIÓN --- */}
-                                        {/* 'log.details' ya es un objeto, solo necesitamos 'stringify' para mostrarlo bonito */}
                                         <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0, fontSize: '0.75rem', fontFamily: 'monospace' }}>
                                             {JSON.stringify(log.details || {}, null, 2)}
                                         </pre>
-                                        {/* --- FIN DE LA CORRECCIÓN --- */}
                                     </TableCell>
                                 </TableRow>
                             ))

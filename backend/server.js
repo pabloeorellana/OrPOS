@@ -4,6 +4,8 @@ require('dotenv').config();
 
 const { protect } = require('./middleware/authMiddleware');
 
+const publicRoutes = require('./routes/publicRoutes');
+
 // Rutas
 const authRoutes = require('./routes/authRoutes');
 const tenantPublicRoutes = require('./routes/tenantPublicRoutes');
@@ -63,6 +65,7 @@ app.get('/api/health', (req, res) => {
 /* --- RUTAS PÚBLICAS --- */
 app.use('/api/auth', authRoutes);
 app.use('/api/tenants', tenantPublicRoutes);
+app.use('/api/public', publicRoutes);
 
 /* --- RUTAS PROTEGIDAS --- */
 const apiRouter = express.Router();

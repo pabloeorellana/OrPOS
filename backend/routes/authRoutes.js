@@ -78,7 +78,9 @@ router.post('/login', async (req, res) => {
         res.json({
             message: 'Login exitoso',
             token: token,
-            user: { id: user.id, username: user.username, role: payload.role }
+            // Enviamos también la señal de superadmin para que el frontend
+            // pueda decidir la navegación sin depender exclusivamente del token decodificado.
+            user: { id: user.id, username: user.username, role: payload.role, isSuperAdmin: !!payload.isSuperAdmin }
         });
 
     } catch (error) {

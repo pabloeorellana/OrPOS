@@ -3,10 +3,13 @@ import { TextField, Button, Typography, Box, Alert, Paper, Avatar, CssBaseline, 
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/axios';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 const Login = () => {
-    const { tenantPath } = useParams(); // Obtiene 'mercadito' desde la URL /mercadito/login
+    const { tenantPath: paramsTenant } = useParams(); // Obtiene 'mercadito' desde la URL /mercadito/login
+    const [searchParams] = useSearchParams();
+    // fallback: si estamos en /tenant-login?tenant=mercadito, tomamos el query param
+    const tenantPath = paramsTenant || searchParams.get('tenant') || undefined;
     const { login } = useAuth();
     const navigate = useNavigate();
 
@@ -30,12 +33,27 @@ const Login = () => {
             });
             const { token, user } = response.data;
             
-            login(user, token); // Actualiza el contexto
+            // Actualiza el contexto con el token (AuthProvider decodifica el token)
+            login(user, token);
 
-            // Navegación post-login
-            if (user.isSuperAdmin) {
+            // Navegación post-login (defensa en profundidad):
+            // usamos la bandera que nos devuelve el backend si está disponible,
+            // y además validamos que `tenantPath` exista antes de navegar a rutas tenant.
+            const isSuperAdmin = response.data?.user?.isSuperAdmin === true;
+            if (isSuperAdmin) {
                 navigate('/superadmin-dashboard', { replace: true });
-            } else if (user.role === 'empleado') {
+                return;
+            }
+
+            // Si es usuario de tenant, tenantPath DEBE existir. Si no, mostramos fallback.
+            if (!tenantPath) {
+                // No estamos en una ruta tenant; no podemos navegar a /undefined.
+                // Mejor redirigir a la home para evitar el 404-tenant.
+                navigate('/', { replace: true });
+                return;
+            }
+
+            if (user.role === 'empleado') {
                 // Para empleados, siempre al POS del tenant actual
                 navigate(`/${tenantPath}/pos`, { replace: true });
             } else {

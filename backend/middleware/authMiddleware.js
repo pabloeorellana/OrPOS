@@ -21,6 +21,10 @@ const protect = (req, res, next) => {
 
 const hasPermission = (requiredPermission) => {
     return (req, res, next) => {
+        // Superadmin siempre puede pasar
+        if (req.user && req.user.isSuperAdmin) {
+            return next();
+        }
         if (!req.user || !req.user.permissions || !req.user.permissions.includes(requiredPermission)) {
             return res.status(403).json({ message: 'No tienes permiso para realizar esta acción' });
         }

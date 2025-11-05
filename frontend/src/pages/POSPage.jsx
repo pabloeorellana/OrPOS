@@ -9,6 +9,7 @@ import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import QrCodeIcon from '@mui/icons-material/QrCode';
 import apiClient from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useLocation } from 'react-router-dom';
 import WeightInputModal from '../components/WeightInputModal';
 
 const ProductCard = ({ product, onAdd }) => {
@@ -51,6 +52,7 @@ const POSPage = () => {
     const [productToWeigh, setProductToWeigh] = useState(null);
     const barcodeInputRef = useRef(null);
     const { user, activeShift } = useAuth();
+    const location = useLocation();
     
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -65,7 +67,7 @@ const POSPage = () => {
             } catch (error) { console.error("Error al cargar datos iniciales:", error); }
         };
         fetchInitialData();
-    }, []);
+    }, [location.pathname]);
 
     useEffect(() => {
         const handler = setTimeout(() => {

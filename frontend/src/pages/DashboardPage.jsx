@@ -3,11 +3,12 @@ import { Typography, Grid, Paper, Table, TableBody, TableCell, TableHead, TableR
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import apiClient from '../api/axios';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const DashboardPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     
     const [kpis, setKpis] = useState(null);
     const [salesData, setSalesData] = useState([]);
@@ -34,7 +35,9 @@ const DashboardPage = () => {
             return;
         }
         if (user.role === 'empleado') {
-            navigate('/pos', { replace: true });
+            // Mantener tenant en path si existe
+            const tenant = (window.location.pathname.split('/').filter(Boolean)[0]) || null;
+            navigate(tenant ? `/${tenant}/pos` : '/pos', { replace: true });
             return;
         }
 
@@ -61,7 +64,7 @@ const DashboardPage = () => {
             setError('No tienes permiso para ver esta sección.');
             setLoading(false);
         }
-    }, [user, navigate]);
+    }, [user, navigate, location.pathname]);
 
     if (loading) {
         return (

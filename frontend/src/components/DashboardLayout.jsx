@@ -20,6 +20,7 @@ import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import GavelIcon from '@mui/icons-material/Gavel';
+import { getTenantFromPath } from '../utils/tenantHelper';
 
 const drawerWidth = 240;
 
@@ -68,6 +69,10 @@ const DashboardLayout = () => {
         }
     }, [user]);
 
+    const tenant = getTenantFromPath();
+    // Para superadmin no se debe anteponer base de tenant
+    const base = user?.isSuperAdmin ? '' : (tenant ? `/${tenant}` : '');
+
     return (
         <Box sx={{ display: 'flex' }}>
             <CssBaseline />
@@ -93,7 +98,7 @@ const DashboardLayout = () => {
                 <Divider />
                 <List>
                     {visibleMenuItems.map((item) => (
-                        <ListItem key={item.text} disablePadding component={Link} to={item.path} sx={{ color: 'inherit', textDecoration: 'none' }}>
+                        <ListItem key={item.text} disablePadding component={Link} to={`${base}${item.path}`} sx={{ color: 'inherit', textDecoration: 'none' }}>
                             <ListItemButton>
                                 <ListItemIcon>{item.icon}</ListItemIcon>
                                 <ListItemText primary={item.text} />

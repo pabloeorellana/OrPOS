@@ -37,10 +37,15 @@ export const AuthProvider = ({ children }) => {
                 localStorage.setItem('token', token);
                 try {
                     console.debug('Auth check: token present, decoding...');
-                    const decodedUser = decodeJwt(token);
-                    console.debug('Auth check: decoded token payload:', decodedUser);
-                    setUser(decodedUser);
-                    setIsImpersonating(!!decodedUser?.impersonatorId);
+                    const decodedUser = decodeJwt(token) || {};
+                    // Normalizar estructura mínima esperada
+                    const normalizedUser = {
+                        ...decodedUser,
+                        permissions: Array.isArray(decodedUser?.permissions) ? decodedUser.permissions : [],
+                    };
+                    console.debug('Auth check: decoded token payload:', normalizedUser);
+                    setUser(normalizedUser);
+                    setIsImpersonating(!!normalizedUser?.impersonatorId);
                     if (!decodedUser.isSuperAdmin && !decodedUser.impersonatorId) {
                         try {
                             const response = await apiClient.get(`/shifts/current/${decodedUser.id}`);
@@ -74,13 +79,8 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('originalToken');
         setActiveShift(null);
         setIsImpersonating(false);
-        // Redirigir inmediatamente al login correcto según el tenant detectado.
-       // const tenant = getSubdomain(); BORRAR ESTA LINEA
-        if (tenant) {
-            navigate(`/tenant-login?tenant=${encodeURIComponent(tenant)}`, { replace: true });
-        } else {
-            navigate('/login', { replace: true });
-        }
+        // Redirigir al login genérico; ProtectedRoute reenviará al login de tenant si corresponde.
+        navigate('/login', { replace: true });
     };
     
     const startShift = async (openingBalance) => {
