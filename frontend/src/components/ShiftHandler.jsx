@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Container, Paper, Typography, Button } from '@mui/material';
+import { Container, Paper, Typography, Button, Box } from '@mui/material';
 import OpenShiftModal from './OpenShiftModal';
 
 const ShiftHandler = ({ children }) => {
-    const { user, activeShift } = useAuth();
+    const { user, activeShift, logout } = useAuth(); // logout añadido
     const [openModal, setOpenModal] = useState(false);
 
     // --- LÓGICA CORREGIDA PARA SUPERADMIN ---
@@ -24,13 +24,23 @@ const ShiftHandler = ({ children }) => {
                     <Typography sx={{ mt: 2 }}>
                         No tienes un turno activo. Debes abrir la caja para empezar a operar.
                     </Typography>
-                    <Button
-                        variant="contained"
-                        sx={{ mt: 3, py: 1.5, px: 5 }}
-                        onClick={() => setOpenModal(true)}
-                    >
-                        Abrir Caja
-                    </Button>
+                    <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
+                        <Button
+                            variant="contained"
+                            size="large"
+                            onClick={() => setOpenModal(true)}
+                        >
+                            Abrir Caja
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            color="error"
+                            size="small"
+                            onClick={logout} // Llama a logout
+                        >
+                            Cerrar Sesión
+                        </Button>
+                    </Box>
                 </Paper>
                 <OpenShiftModal open={openModal} onClose={() => setOpenModal(false)} />
             </Container>

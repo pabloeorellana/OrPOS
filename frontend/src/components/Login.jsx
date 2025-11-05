@@ -33,8 +33,8 @@ const Login = () => {
             });
             const { token, user } = response.data;
             
-            // Actualiza el contexto con el token (AuthProvider decodifica el token)
-            login(user, token);
+            // Actualiza el contexto con el token y el contexto actual (superadmin o tenant)
+            login(token, tenantPath || 'superadmin');
 
             // Navegación post-login (defensa en profundidad):
             // usamos la bandera que nos devuelve el backend si está disponible,

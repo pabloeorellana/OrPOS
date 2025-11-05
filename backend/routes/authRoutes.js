@@ -68,7 +68,14 @@ router.post('/login', async (req, res) => {
         if (user.tenant_id === null) {
             payload = { id: user.id, username: user.username, isSuperAdmin: true, role: 'superadmin', permissions };
         } else {
-            payload = { id: user.id, username: user.username, tenantId: user.tenant_id, role: user.role_name, permissions };
+            payload = {
+                id: user.id,
+                username: user.username,
+                tenantId: user.tenant_id,
+                role: user.role_name,
+                isSuperAdmin: false,
+                permissions
+            };
         }
         
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });

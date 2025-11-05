@@ -66,8 +66,8 @@ const AppRouter = () => {
 
     // Si hay usuario, muestra las rutas protegidas
     return (
-        <ShiftHandler>
-            <DashboardLayout>
+        <DashboardLayout>
+            <ShiftHandler>
                 <Routes>
                     <Route path="/dashboard" element={<PermissionProtectedRoute permission="dashboard:view"><DashboardPage /></PermissionProtectedRoute>} />
                     <Route path="/pos" element={<PermissionProtectedRoute permission="pos:use"><POSPage /></PermissionProtectedRoute>} />
@@ -93,8 +93,8 @@ const AppRouter = () => {
                     
                     <Route path="*" element={<Typography variant="h4" align="center" sx={{ mt: 4 }}>404 - Página no encontrada</Typography>} />
                 </Routes>
-            </DashboardLayout>
-        </ShiftHandler>
+            </ShiftHandler>
+        </DashboardLayout>
     );
 };
 

@@ -43,54 +43,102 @@ router.get('/current/:userId', async (req, res) => {
 
 router.post('/start', async (req, res) => {
     const tenantId = req.user.tenantId;
-    if (req.body.userId !== req.user.id) {
+    const { userId, openingBalance, openingVirtualBalance } = req.body;
+
+    if (userId !== req.user.id) {
         return res.status(403).json({ message: "No puedes iniciar un turno para otro usuario." });
     }
     try {
-        const [result] = await db.query('INSERT INTO shifts (user_id, opening_balance, tenant_id) VALUES (?, ?, ?)', [req.body.userId, req.body.openingBalance, tenantId]);
-        await logAction(req.user.id, 'SHIFT_START', req.user.tenantId, { shiftId: result.insertId, openingBalance: req.body.openingBalance });
+        const [result] = await db.query(
+            'INSERT INTO shifts (user_id, opening_balance, opening_virtual_balance, tenant_id) VALUES (?, ?, ?, ?)',
+            [userId, openingBalance, openingVirtualBalance, tenantId]
+        );
+        await logAction(req.user.id, 'SHIFT_START', req.user.tenantId, { 
+            shiftId: result.insertId, 
+            openingBalance, 
+            openingVirtualBalance 
+        });
         res.status(201).json({ message: "Shift started successfully", shiftId: result.insertId });
     } catch (error) {
+        console.error("Error al iniciar turno:", error);
         res.status(500).json({ message: "Server error." });
     }
 });
 
 router.post('/end/:id', async (req, res) => {
     const { id } = req.params;
-    const { closingBalance } = req.body;
+    // Recibir ambos montos de cierre
+    const { closingBalance, closingVirtualBalance } = req.body;
     const tenantId = req.user.tenantId;
+
     try {
-        const [shift] = await db.query('SELECT user_id, opening_balance FROM shifts WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+        // Obtener ambos balances iniciales
+        const [shift] = await db.query('SELECT user_id, opening_balance, opening_virtual_balance FROM shifts WHERE id = ? AND tenant_id = ?', [id, tenantId]);
         if (shift.length === 0) return res.status(404).json({ message: "Turno no encontrado." });
         if (shift[0].user_id !== req.user.id) return res.status(403).json({ message: "No puedes cerrar el turno de otro usuario." });
 
         const [sales] = await db.query('SELECT payment_method, SUM(total_amount) as total, COUNT(id) as count FROM sales WHERE shift_id = ? AND tenant_id = ? GROUP BY payment_method', [id, tenantId]);
         const [returns] = await db.query('SELECT SUM(r.total_amount) as totalCashReturns FROM returns r JOIN sales s ON r.sale_id = s.id WHERE s.shift_id = ? AND r.tenant_id = ? AND r.payment_method = "Efectivo"', [id, tenantId]);
+        
+        // --- Cálculos de Efectivo ---
+        const openingBalance = parseFloat(shift[0].opening_balance);
+        const totalCashSales = parseFloat(sales.find(s => s.payment_method === 'Efectivo')?.total || 0);
         const totalCashReturns = parseFloat(returns[0]?.totalCashReturns || 0);
+        const expectedInCash = openingBalance + totalCashSales - totalCashReturns;
+        const difference = parseFloat(closingBalance) - expectedInCash;
 
+        // --- Cálculos de Billetera Virtual ---
+        const openingVirtualBalance = parseFloat(shift[0].opening_virtual_balance);
+        const totalCardSales = parseFloat(sales.find(s => s.payment_method === 'Tarjeta')?.total || 0);
+        const totalTransferSales = parseFloat(sales.find(s => s.payment_method === 'Transferencia')?.total || 0);
+        const totalQRSales = parseFloat(sales.find(s => s.payment_method === 'QR')?.total || 0);
+        const totalVirtualSales = totalCardSales + totalTransferSales + totalQRSales;
+        // (Asumimos que no hay devoluciones virtuales por ahora)
+        const expectedVirtualBalance = openingVirtualBalance + totalVirtualSales;
+        const virtualDifference = parseFloat(closingVirtualBalance) - expectedVirtualBalance;
+
+        // --- Otros Cálculos ---
         let transactionCount = 0;
         sales.forEach(s => { transactionCount += s.count; });
-        const totalCash = parseFloat(sales.find(s => s.payment_method === 'Efectivo')?.total || 0);
-        const totalCard = parseFloat(sales.find(s => s.payment_method === 'Tarjeta')?.total || 0);
-        const totalTransfer = parseFloat(sales.find(s => s.payment_method === 'Transferencia')?.total || 0);
-        const totalQR = parseFloat(sales.find(s => s.payment_method === 'QR')?.total || 0);
-        const totalOtro = parseFloat(sales.find(s => s.payment_method === 'Otro')?.total || 0);
-        const totalOther = totalQR + totalOtro;
-        const openingBalance = parseFloat(shift[0].opening_balance);
-        const expectedInCash = openingBalance + totalCash - totalCashReturns;
-        const difference = parseFloat(closingBalance) - expectedInCash;
+        const totalOtherSales = parseFloat(sales.find(s => s.payment_method === 'Otro')?.total || 0);
 
         const query = `
             UPDATE shifts SET 
-                end_time = NOW(), closing_balance = ?, expected_balance = ?, difference = ?, status = "closed",
-                total_cash_sales = ?, total_card_sales = ?, total_transfer_sales = ?, total_other_sales = ?,
-                transaction_count = ?, total_cash_returns = ?
+                end_time = NOW(), status = "closed",
+                opening_balance = ?,
+                closing_balance = ?, 
+                expected_balance = ?, 
+                difference = ?, 
+                opening_virtual_balance = ?,
+                closing_virtual_balance = ?,
+                expected_virtual_balance = ?,
+                virtual_difference = ?,
+                total_cash_sales = ?, 
+                total_card_sales = ?, 
+                total_transfer_sales = ?, 
+                total_qr_sales = ?,
+                total_other_sales = ?,
+                transaction_count = ?, 
+                total_cash_returns = ?
             WHERE id = ? AND tenant_id = ?
         `;
-        await db.query(query, [closingBalance, expectedInCash, difference, totalCash, totalCard, totalTransfer, totalOther, transactionCount, totalCashReturns, id, tenantId]);
+        await db.query(query, [
+            openingBalance, closingBalance, expectedInCash, difference, 
+            openingVirtualBalance, closingVirtualBalance, expectedVirtualBalance, virtualDifference,
+            totalCashSales, totalCardSales, totalTransferSales, totalQRSales, totalOtherSales, 
+            transactionCount, totalCashReturns, 
+            id, tenantId
+        ]);
         
-        await logAction(req.user.id, 'SHIFT_END', req.user.tenantId, { shiftId: id, closingBalance: closingBalance, difference: difference });
-        res.json({ message: "Turno cerrado exitosamente.", difference });
+        await logAction(req.user.id, 'SHIFT_END', req.user.tenantId, { shiftId: id, closingBalance, closingVirtualBalance, difference, virtualDifference });
+        
+        // Devolver un objeto más detallado
+        res.json({
+            message: "Turno cerrado exitosamente.",
+            cashDetails: { openingBalance, totalCashSales, totalCashReturns, expectedInCash, closingBalance, difference },
+            virtualDetails: { openingVirtualBalance, totalVirtualSales, expectedVirtualBalance, closingVirtualBalance, virtualDifference }
+        });
+
     } catch (error) {
         console.error("Error al cerrar turno:", error);
         res.status(500).json({ message: "Server error al cerrar el turno." });

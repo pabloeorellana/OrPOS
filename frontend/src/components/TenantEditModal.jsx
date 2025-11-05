@@ -70,6 +70,7 @@ const TenantEditModal = ({ open, onClose, tenant, onSave }) => {
                 <Box sx={modalStyle}>
                     <Typography variant="h6">Editar Negocio: {tenant.name}</Typography>
                     <TextField name="name" label="Nombre del Negocio" fullWidth required sx={{ mt: 2 }} value={formData.name} onChange={handleChange} />
+                    <TextField name="subdomain" label="Subdominio" fullWidth required sx={{ mt: 2 }} value={formData.subdomain || ''} onChange={handleChange} />
                     
                     <FormControl fullWidth sx={{ mt: 2 }}>
                         <InputLabel>Estado</InputLabel>

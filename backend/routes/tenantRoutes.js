@@ -157,16 +157,20 @@ router.get('/:id/users', superadminOnly, async (req, res) => {
 
 router.put('/:id', superadminOnly, async (req, res) => {
     const { id } = req.params;
-    const { name, status, plan_id, subscription_ends_at } = req.body;
+    const { name, status, plan_id, subscription_ends_at, subdomain } = req.body; // Añadir subdomain
     try {
         const [result] = await db.query(
-            'UPDATE tenants SET name = ?, status = ?, plan_id = ?, subscription_ends_at = ? WHERE id = ?',
-            [name, status, plan_id, subscription_ends_at, id]
+            'UPDATE tenants SET name = ?, status = ?, plan_id = ?, subscription_ends_at = ?, subdomain = ? WHERE id = ?',
+            [name, status, plan_id, subscription_ends_at, subdomain, id] // Añadir subdomain al array de parámetros
         );
         if (result.affectedRows === 0) return res.status(404).json({ message: 'Negocio no encontrado.' });
         await logAction(req.user.id, 'TENANT_UPDATE', null, { tenantId: id, changes: req.body });
         res.json({ message: 'Negocio actualizado correctamente.' });
     } catch (error) {
+        // Manejo de error para subdominio duplicado
+        if (error.code === 'ER_DUP_ENTRY' && error.message.includes('tenants.subdomain')) {
+            return res.status(409).json({ message: 'El subdominio ya está en uso.' });
+        }
         console.error("Error al actualizar tenant:", error);
         res.status(500).json({ message: 'Error en el servidor al actualizar.' });
     }

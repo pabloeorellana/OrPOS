@@ -2,6 +2,7 @@ export const getTenantFromPath = () => {
     // Lista extendida de rutas reservadas que NO pueden ser tenants
     const reservedPaths = [
         'login', 'admin', '404-tenant', 'tenant-login', 'superadmin', 'plans', 'permissions-admin',
+        'superadmin-dashboard', // <-- AÑADIDO PARA EVITAR FALSOS POSITIVOS
         'dashboard', 'pos', 'sales-history', 'shifts-history', 'purchases', 'products', 'categories',
         'suppliers', 'users', 'settings', 'audit', 'reports', 'permissions', 'business-settings'
     ];

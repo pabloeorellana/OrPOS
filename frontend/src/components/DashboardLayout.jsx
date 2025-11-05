@@ -48,7 +48,10 @@ const DashboardLayout = () => {
 
     useEffect(() => {
         if (!user) { setVisibleMenuItems([]); return; }
-        if (user.isSuperAdmin) {
+        const tenantInPath = getTenantFromPath();
+
+        // Menú de superadmin SOLO si es superadmin y NO estamos en una ruta de tenant
+        if (user.isSuperAdmin && !tenantInPath) {
             setVisibleMenuItems([
                 { text: 'Dashboard Global', icon: <DashboardIcon />, path: '/superadmin-dashboard' },
                 { text: 'Gestionar Negocios', icon: <SupervisorAccountIcon />, path: '/superadmin' },
@@ -79,7 +82,7 @@ const DashboardLayout = () => {
             <AppBar position="fixed" sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px` }}>
                 <Toolbar>
                     <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-                        {user?.isSuperAdmin ? "Panel de Superadministrador" : "Panel de Control"}
+                        {user?.isSuperAdmin && !tenant ? 'Panel de Superadministrador' : 'Panel de Control'}
                     </Typography>
                     {!user?.isSuperAdmin && (
                         <>

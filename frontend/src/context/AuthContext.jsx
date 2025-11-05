@@ -1,111 +1,155 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-// Reemplazamos la dependencia externa `jwt-decode` por una función pequeña
-// para decodificar el payload del JWT. Esto evita problemas de interop
-// entre diferentes formatos de export (named/default) que pueden causar
-// errores con Vite: "does not provide an export named 'default'".
+import { getTenantFromPath } from '../utils/tenantHelper'; // Importar helper
+
 const decodeJwt = (token) => {
     try {
         if (!token) return null;
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-        const payload = parts[1];
-        // Add padding if necessary
-        const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-        const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
-        const json = atob(padded);
+        const payload = token.split('.')[1];
+        const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
         return JSON.parse(json);
     } catch (e) {
         return null;
     }
 };
+
 import apiClient from '../api/axios';
 
 const AuthContext = createContext();
 
+// --- Helper para la sesión ---
+const getSession = () => {
+    const sessionString = localStorage.getItem('session');
+    if (!sessionString) return null;
+    try {
+        return JSON.parse(sessionString);
+    } catch (e) {
+        return null;
+    }
+};
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(undefined);
-    const [token, setToken] = useState(() => localStorage.getItem('token'));
+    // El estado 'token' ahora se inicializa desde el objeto de sesión
+    const [token, setToken] = useState(() => getSession()?.token || null);
     const [isAuthLoading, setIsAuthLoading] = useState(true);
     const [activeShift, setActiveShift] = useState(null);
     const [isImpersonating, setIsImpersonating] = useState(false);
-    
+    const navigate = useNavigate();
+
     useEffect(() => {
         const checkAuth = async () => {
+            const session = getSession();
+            const requiredContext = getTenantFromPath() || 'superadmin';
+
+            // Si hay una sesión, pero el contexto no coincide, forzamos el logout.
+            if (session && session.context !== requiredContext) {
+                console.warn(`Context mismatch: required '${requiredContext}', found '${session.context}'. Logging out.`);
+                logout(); // logout() se encarga de limpiar todo
+                setIsAuthLoading(false);
+                return;
+            }
+
+            // Si la sesión es válida para el contexto actual (o no hay sesión)
             if (token) {
                 apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-                localStorage.setItem('token', token);
-                try {
-                    console.debug('Auth check: token present, decoding...');
-                    const decodedUser = decodeJwt(token) || {};
-                    // Normalizar estructura mínima esperada
-                    const normalizedUser = {
-                        ...decodedUser,
-                        permissions: Array.isArray(decodedUser?.permissions) ? decodedUser.permissions : [],
-                    };
-                    console.debug('Auth check: decoded token payload:', normalizedUser);
-                    setUser(normalizedUser);
-                    setIsImpersonating(!!normalizedUser?.impersonatorId);
-                    if (!decodedUser.isSuperAdmin && !decodedUser.impersonatorId) {
-                        try {
-                            const response = await apiClient.get(`/shifts/current/${decodedUser.id}`);
-                            setActiveShift(response.data);
-                        } catch (error) {
-                            setActiveShift(null);
-                        }
+                const decodedUser = decodeJwt(token) || {};
+                const normalizedUser = {
+                    ...decodedUser,
+                    permissions: Array.isArray(decodedUser?.permissions) ? decodedUser.permissions : [],
+                };
+                setUser(normalizedUser);
+                setIsImpersonating(!!normalizedUser?.impersonatorId);
+
+                if (!decodedUser.isSuperAdmin && !decodedUser.impersonatorId) {
+                    try {
+                        const response = await apiClient.get(`/shifts/current/${decodedUser.id}`);
+                        setActiveShift(response.data);
+                    } catch (error) {
+                        setActiveShift(null);
                     }
-                } catch (err) {
-                    console.error('Error decoding token in AuthProvider:', err);
-                    setUser(null);
                 }
             } else {
                 delete apiClient.defaults.headers.common['Authorization'];
-                localStorage.removeItem('token');
                 setUser(null);
             }
             setIsAuthLoading(false);
         };
         checkAuth();
-    }, [token]);
-    
-    const navigate = useNavigate();
+    }, [token]); // Dependemos de 'token' para re-evaluar
 
-    const login = (userData, userToken) => {
+    const login = (userToken, context) => {
+        const session = { token: userToken, context };
+        localStorage.setItem('session', JSON.stringify(session));
         setToken(userToken);
     };
 
     const logout = () => {
-        setToken(null);
+        localStorage.removeItem('session'); // Limpiar el objeto de sesión
         localStorage.removeItem('originalToken');
+        setToken(null);
         setActiveShift(null);
         setIsImpersonating(false);
-        // Redirigir al login genérico; ProtectedRoute reenviará al login de tenant si corresponde.
-        navigate('/login', { replace: true });
+        const requiredContext = getTenantFromPath();
+        if (requiredContext) {
+            navigate(`/${requiredContext}/login`, { replace: true });
+        } else {
+            navigate('/login', { replace: true });
+        }
     };
     
-    const startShift = async (openingBalance) => {
+    const startShift = async (balances) => { // Acepta un objeto de saldos
         try {
-            await apiClient.post('/shifts/start', { userId: user.id, openingBalance });
+            await apiClient.post('/shifts/start', { 
+                userId: user.id, 
+                openingBalance: balances.openingBalance, 
+                openingVirtualBalance: balances.openingVirtualBalance 
+            });
             const response = await apiClient.get(`/shifts/current/${user.id}`);
             setActiveShift(response.data);
             return true;
         } catch (error) {
+            console.error("Error al iniciar turno:", error);
             return false;
         }
     };
     
-    const endShift = async (closingBalance) => {
+    const endShift = async (balances) => { // Acepta objeto de saldos de cierre
         try {
-            const response = await apiClient.post(`/shifts/end/${activeShift.id}`, { closingBalance });
-            alert(`Turno cerrado. Diferencia: $${response.data.difference.toFixed(2)}`);
+            const response = await apiClient.post(`/shifts/end/${activeShift.id}`, balances);
+            
+            // Crear un mensaje de alerta detallado
+            const { cashDetails, virtualDetails } = response.data;
+            const summaryMessage = `
+                Turno Cerrado Exitosamente
+                ----------------------------------
+                RESUMEN DE EFECTIVO:
+                - Saldo Inicial: $${cashDetails.openingBalance.toFixed(2)}
+                - Ventas en Efectivo: $${cashDetails.totalCashSales.toFixed(2)}
+                - Devoluciones: -$${cashDetails.totalCashReturns.toFixed(2)}
+                - Saldo Esperado: $${cashDetails.expectedInCash.toFixed(2)}
+                - Saldo Real: $${cashDetails.closingBalance.toFixed(2)}
+                - Diferencia: $${cashDetails.difference.toFixed(2)}
+                ----------------------------------
+                RESUMEN VIRTUAL:
+                - Saldo Inicial: $${virtualDetails.openingVirtualBalance.toFixed(2)}
+                - Ventas Virtuales: $${virtualDetails.totalVirtualSales.toFixed(2)}
+                - Saldo Esperado: $${virtualDetails.expectedVirtualBalance.toFixed(2)}
+                - Saldo Declarado: $${virtualDetails.closingVirtualBalance.toFixed(2)}
+                - Diferencia: $${virtualDetails.virtualDifference.toFixed(2)}
+            `;
+            alert(summaryMessage);
+
             setActiveShift(null);
-            return true;
+            return response.data; // Devolver todos los datos para el modal
         } catch (error) {
-            return false;
+            console.error("Error al cerrar turno:", error);
+            return null; // Devolver null en caso de error
         }
     };
 
     const startImpersonation = (impersonationToken) => {
+        // La impersonalización no necesita contexto, ya que es temporal y controlada
         localStorage.setItem('originalToken', token);
         setToken(impersonationToken);
     };
