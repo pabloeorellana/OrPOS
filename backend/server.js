@@ -24,6 +24,7 @@ const auditRoutes = require('./routes/auditRoutes');
 const returnRoutes = require('./routes/returnRoutes');
 const permissionsRoutes = require('./routes/permissionsRoutes');
 const superadminRoutes = require('./routes/superadminRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 const app = express();
 
@@ -86,6 +87,7 @@ apiRouter.use('/categories', categoryRoutes);
 apiRouter.use('/settings', settingsRoutes);
 apiRouter.use('/audit', auditRoutes);
 apiRouter.use('/returns', returnRoutes);
+apiRouter.use('/payments', paymentRoutes);
 
 /* --- MANEJO DE ERRORES GLOBAL --- */
 app.use((err, req, res, next) => {
@@ -95,5 +97,5 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
+  
 });

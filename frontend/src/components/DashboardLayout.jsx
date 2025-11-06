@@ -30,6 +30,7 @@ const allMenuItems = [
     { text: 'Historial de Ventas', icon: <HistoryIcon />, path: '/sales-history', permission: ['sales:history:view_all', 'sales:history:view_own'] },
     { text: 'Arqueo de Cajas', icon: <AccountBalanceWalletIcon />, path: '/shifts-history', permission: 'shifts:history:view' },
     { text: 'Compras', icon: <ReceiptIcon />, path: '/purchases', permission: 'purchases:manage' },
+    { text: 'Pagos', icon: <MonetizationOnIcon />, path: '/payments', permission: 'payments:view' },
     { text: 'Productos', icon: <InventoryIcon />, path: '/products', permission: 'products:manage' },
     { text: 'Categorías', icon: <CategoryIcon />, path: '/categories', permission: 'categories:manage' },
     { text: 'Proveedores', icon: <LocalShippingIcon />, path: '/suppliers', permission: 'suppliers:manage' },

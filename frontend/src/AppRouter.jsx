@@ -16,6 +16,7 @@ import POSPage from './pages/POSPage';
 import PurchasePage from './pages/PurchasePage';
 import NewPurchasePage from './pages/NewPurchasePage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
+import PaymentsPage from './pages/PaymentsPage';
 import CategoryPage from './pages/CategoryPage';
 import SettingsPage from './pages/SettingsPage';
 import ShiftsHistoryPage from './pages/ShiftsHistoryPage';
@@ -75,6 +76,7 @@ const AppRouter = () => {
                     <Route path="/shifts-history" element={<PermissionProtectedRoute permission="shifts:history:view"><ShiftsHistoryPage /></PermissionProtectedRoute>} />
                     <Route path="/purchases" element={<PermissionProtectedRoute permission="purchases:manage"><PurchasePage /></PermissionProtectedRoute>} />
                     <Route path="/purchases/new" element={<PermissionProtectedRoute permission="purchases:manage"><NewPurchasePage /></PermissionProtectedRoute>} />
+                    <Route path="/payments" element={<PermissionProtectedRoute permission="payments:view"><PaymentsPage /></PermissionProtectedRoute>} />
                     <Route path="/products" element={<PermissionProtectedRoute permission="products:manage"><ProductPage /></PermissionProtectedRoute>} />
                     <Route path="/categories" element={<PermissionProtectedRoute permission="categories:manage"><CategoryPage /></PermissionProtectedRoute>} /> 
                     <Route path="/suppliers" element={<PermissionProtectedRoute permission="suppliers:manage"><SupplierPage /></PermissionProtectedRoute>} />

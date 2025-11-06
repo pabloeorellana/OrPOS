@@ -34,7 +34,7 @@ const ProductPage = () => {
     }, []);
 
     const handleOpenModal = (product = null) => {
-        console.log("Abriendo modal para el producto:", product); 
+
         setProductToEdit(product);
         setModalOpen(true);
     };

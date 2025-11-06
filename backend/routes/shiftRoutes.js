@@ -67,24 +67,25 @@ router.post('/start', async (req, res) => {
 
 router.post('/end/:id', async (req, res) => {
     const { id } = req.params;
-    // Recibir ambos montos de cierre
     const { closingBalance, closingVirtualBalance } = req.body;
     const tenantId = req.user.tenantId;
 
     try {
-        // Obtener ambos balances iniciales
-        const [shift] = await db.query('SELECT user_id, opening_balance, opening_virtual_balance FROM shifts WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+        const [shift] = await db.query('SELECT user_id, opening_balance, opening_virtual_balance, total_cash_payments, total_virtual_payments FROM shifts WHERE id = ? AND tenant_id = ?', [id, tenantId]);
         if (shift.length === 0) return res.status(404).json({ message: "Turno no encontrado." });
         if (shift[0].user_id !== req.user.id) return res.status(403).json({ message: "No puedes cerrar el turno de otro usuario." });
 
         const [sales] = await db.query('SELECT payment_method, SUM(total_amount) as total, COUNT(id) as count FROM sales WHERE shift_id = ? AND tenant_id = ? GROUP BY payment_method', [id, tenantId]);
         const [returns] = await db.query('SELECT SUM(r.total_amount) as totalCashReturns FROM returns r JOIN sales s ON r.sale_id = s.id WHERE s.shift_id = ? AND r.tenant_id = ? AND r.payment_method = "Efectivo"', [id, tenantId]);
         
+        const totalCashPayments = parseFloat(shift[0].total_cash_payments || 0);
+        const totalVirtualPayments = parseFloat(shift[0].total_virtual_payments || 0);
+
         // --- Cálculos de Efectivo ---
         const openingBalance = parseFloat(shift[0].opening_balance);
         const totalCashSales = parseFloat(sales.find(s => s.payment_method === 'Efectivo')?.total || 0);
         const totalCashReturns = parseFloat(returns[0]?.totalCashReturns || 0);
-        const expectedInCash = openingBalance + totalCashSales - totalCashReturns;
+        const expectedInCash = openingBalance + totalCashSales - totalCashReturns - totalCashPayments;
         const difference = parseFloat(closingBalance) - expectedInCash;
 
         // --- Cálculos de Billetera Virtual ---
@@ -93,8 +94,7 @@ router.post('/end/:id', async (req, res) => {
         const totalTransferSales = parseFloat(sales.find(s => s.payment_method === 'Transferencia')?.total || 0);
         const totalQRSales = parseFloat(sales.find(s => s.payment_method === 'QR')?.total || 0);
         const totalVirtualSales = totalCardSales + totalTransferSales + totalQRSales;
-        // (Asumimos que no hay devoluciones virtuales por ahora)
-        const expectedVirtualBalance = openingVirtualBalance + totalVirtualSales;
+        const expectedVirtualBalance = openingVirtualBalance + totalVirtualSales - totalVirtualPayments;
         const virtualDifference = parseFloat(closingVirtualBalance) - expectedVirtualBalance;
 
         // --- Otros Cálculos ---
@@ -119,24 +119,25 @@ router.post('/end/:id', async (req, res) => {
                 total_qr_sales = ?,
                 total_other_sales = ?,
                 transaction_count = ?, 
-                total_cash_returns = ?
+                total_cash_returns = ?,
+                total_cash_payments = ?,
+                total_virtual_payments = ?
             WHERE id = ? AND tenant_id = ?
         `;
         await db.query(query, [
             openingBalance, closingBalance, expectedInCash, difference, 
             openingVirtualBalance, closingVirtualBalance, expectedVirtualBalance, virtualDifference,
             totalCashSales, totalCardSales, totalTransferSales, totalQRSales, totalOtherSales, 
-            transactionCount, totalCashReturns, 
+            transactionCount, totalCashReturns, totalCashPayments, totalVirtualPayments,
             id, tenantId
         ]);
         
         await logAction(req.user.id, 'SHIFT_END', req.user.tenantId, { shiftId: id, closingBalance, closingVirtualBalance, difference, virtualDifference });
         
-        // Devolver un objeto más detallado
         res.json({
             message: "Turno cerrado exitosamente.",
-            cashDetails: { openingBalance, totalCashSales, totalCashReturns, expectedInCash, closingBalance, difference },
-            virtualDetails: { openingVirtualBalance, totalVirtualSales, expectedVirtualBalance, closingVirtualBalance, virtualDifference }
+            cashDetails: { openingBalance, totalCashSales, totalCashReturns, totalCashPayments, expectedInCash, closingBalance, difference },
+            virtualDetails: { openingVirtualBalance, totalVirtualSales, totalVirtualPayments, expectedVirtualBalance, closingVirtualBalance, virtualDifference }
         });
 
     } catch (error) {

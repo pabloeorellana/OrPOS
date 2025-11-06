@@ -73,7 +73,7 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/', hasPermission('pos:use'), async (req, res) => {
-    const { userId, totalAmount, items, shiftId, paymentMethod } = req.body;
+    const { userId, totalAmount, items, shiftId, paymentMethod, paymentMethods } = req.body;
     const tenantId = req.user.tenantId;
     if (userId !== req.user.id) return res.status(403).json({ message: "Acción no permitida." });
     if (!items || items.length === 0) return res.status(400).json({ message: "El carrito está vacío." });
@@ -91,7 +91,23 @@ router.post('/', hasPermission('pos:use'), async (req, res) => {
                 return res.status(400).json({ message: `Stock insuficiente para el producto ID ${item.id}.` });
             }
         }
-        const [saleResult] = await connection.query('INSERT INTO sales (user_id, total_amount, shift_id, payment_method, tenant_id) VALUES (?, ?, ?, ?, ?)', [userId, totalAmount, shiftId, paymentMethod, tenantId]);
+
+        let finalPaymentMethod;
+        let finalPaymentMethodsJson;
+
+        if (paymentMethods && paymentMethods.length > 1) {
+            finalPaymentMethod = 'Mixto: ' + paymentMethods.map(p => p.method).join(', ');
+            finalPaymentMethodsJson = JSON.stringify(paymentMethods);
+        } else {
+            const method = paymentMethod || (paymentMethods && paymentMethods[0].method);
+            finalPaymentMethod = method;
+            finalPaymentMethodsJson = JSON.stringify([{ method, amount: totalAmount }]);
+        }
+
+        const [saleResult] = await connection.query(
+            'INSERT INTO sales (user_id, total_amount, shift_id, payment_method, payment_methods, tenant_id) VALUES (?, ?, ?, ?, ?, ?)', 
+            [userId, totalAmount, shiftId, finalPaymentMethod, finalPaymentMethodsJson, tenantId]
+        );
         const saleId = saleResult.insertId;
         const saleItemsValues = items.map(item => [saleId, item.id, item.quantity, item.price]);
         await connection.query('INSERT INTO sale_items (sale_id, product_id, quantity, price_at_time) VALUES ?', [saleItemsValues]);
@@ -99,7 +115,7 @@ router.post('/', hasPermission('pos:use'), async (req, res) => {
             await connection.query('UPDATE products SET stock = stock - ? WHERE id = ? AND tenant_id = ?', [item.quantity, item.id, tenantId]);
         }
         await connection.commit();
-        await logAction(req.user.id, 'SALE_CREATE', req.user.tenantId, { saleId, total: totalAmount, payment: paymentMethod });
+        await logAction(req.user.id, 'SALE_CREATE', req.user.tenantId, { saleId, total: totalAmount, payment: finalPaymentMethod, payment_methods: finalPaymentMethodsJson });
         res.status(201).json({ message: "Venta registrada exitosamente" });
     } catch (error) {
         await connection.rollback();

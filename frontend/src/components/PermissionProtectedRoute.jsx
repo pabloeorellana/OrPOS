@@ -5,6 +5,7 @@ import { CircularProgress, Box } from '@mui/material';
 import { getTenantFromPath } from '../utils/tenantHelper';
 
 const PermissionProtectedRoute = ({ children, permission }) => {
+
     const { user, isAuthLoading } = useAuth();
     const location = useLocation();
 
@@ -32,6 +33,7 @@ const PermissionProtectedRoute = ({ children, permission }) => {
     const hasPermission = perms.includes(permission);
 
     if (hasPermission) {
+
         return children; // El usuario tiene permiso, renderiza la página
     }
 

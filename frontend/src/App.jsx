@@ -29,6 +29,7 @@ import BusinessSettingsPage from './pages/BusinessSettingsPage';
 import PlansPage from './pages/PlansPage';
 import PermissionsAdminPage from './pages/PermissionsAdminPage';
 import SuperadminDashboardPage from './pages/SuperadminDashboardPage';
+import PaymentsPage from './pages/PaymentsPage';
 
 // Layout protegido para tenants (incluye ShiftHandler)
 const PrivateLayout = () => (
@@ -72,6 +73,7 @@ function App() {
           <Route path="shifts-history" element={<PermissionProtectedRoute permission="shifts:history:view"><ShiftsHistoryPage /></PermissionProtectedRoute>} />
           <Route path="purchases" element={<PermissionProtectedRoute permission="purchases:manage"><PurchasePage /></PermissionProtectedRoute>} />
           <Route path="purchases/new" element={<PermissionProtectedRoute permission="purchases:manage"><NewPurchasePage /></PermissionProtectedRoute>} />
+          <Route path="payments" element={<PermissionProtectedRoute permission="payments:view"><PaymentsPage /></PermissionProtectedRoute>} />
           <Route path="products" element={<PermissionProtectedRoute permission="products:manage"><ProductPage /></PermissionProtectedRoute>} />
           <Route path="categories" element={<PermissionProtectedRoute permission="categories:manage"><CategoryPage /></PermissionProtectedRoute>} /> 
           <Route path="suppliers" element={<PermissionProtectedRoute permission="suppliers:manage"><SupplierPage /></PermissionProtectedRoute>} />

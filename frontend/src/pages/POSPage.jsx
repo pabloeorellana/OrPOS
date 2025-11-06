@@ -7,10 +7,12 @@ import MoneyIcon from '@mui/icons-material/Money';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import QrCodeIcon from '@mui/icons-material/QrCode';
+import CallSplitIcon from '@mui/icons-material/CallSplit';
 import apiClient from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useLocation } from 'react-router-dom';
 import WeightInputModal from '../components/WeightInputModal';
+import SplitPaymentModal from '../components/SplitPaymentModal';
 
 const ProductCard = ({ product, onAdd }) => {
     const hasStock = product.stock > 0;
@@ -50,6 +52,7 @@ const POSPage = () => {
     const [showPaymentOptions, setShowPaymentOptions] = useState(false);
     const [isWeightModalOpen, setWeightModalOpen] = useState(false);
     const [productToWeigh, setProductToWeigh] = useState(null);
+    const [isSplitPaymentModalOpen, setSplitPaymentModalOpen] = useState(false);
     const barcodeInputRef = useRef(null);
     const { user, activeShift } = useAuth();
     const location = useLocation();
@@ -157,33 +160,40 @@ const POSPage = () => {
 
     const handleRemoveItem = (itemId) => setCart(cart.filter(i => i.id !== itemId));
     
-    const handleFinalizeSale = async (paymentMethod) => {
+    const handleFinalizeSale = async (payment) => {
         if (cart.length === 0) return;
+        
         const saleData = {
             userId: user.id,
             totalAmount: total,
             shiftId: activeShift.id,
-            paymentMethod: paymentMethod,
             items: cart.map(item => ({
                 id: item.product_id,
                 quantity: item.quantity,
                 price: item.price_per_unit
-            }))
+            })),
         };
+
+        if (Array.isArray(payment)) {
+            saleData.paymentMethods = payment;
+        } else {
+            saleData.paymentMethod = payment;
+        }
+
         try {
             await apiClient.post('/sales', saleData);
-            alert(`Venta con ${paymentMethod} registrada!`);
+            alert(`Venta registrada!`);
             setCart([]);
             setShowPaymentOptions(false);
+            setSplitPaymentModalOpen(false);
         } catch (error) {
             alert(error.response?.data?.message || "Error al registrar la venta.");
         }
     };
-
     return (
         <Box sx={{ display: 'flex', gap: 2, height: 'calc(100vh - 112px)' }}>
             <Paper sx={{ width: '60%', p: 2, display: 'flex', flexDirection: 'column' }}>
-                <Box component="form" onSubmit={handleBarcodeSubmit}><TextField fullWidth label="Buscar productos" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} inputRef={barcodeInputRef} /></Box>
+                <Box component="form" onSubmit={handleBarcodeSubmit}><TextField fullWidth label="Buscar o escanear producto" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} inputRef={barcodeInputRef} /></Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, pb: 1, borderBottom: 1, borderColor: 'divider', color: 'text.secondary', fontWeight: 'bold' }}>
                     <Typography>PRODUCTO</Typography>
                     <Typography sx={{ width: '100px', textAlign: 'right', mr: 7.5 }}>PRECIO</Typography>
@@ -203,7 +213,7 @@ const POSPage = () => {
                     <List>{cart.map(item => (
                            <ListItem key={item.id} disablePadding sx={{ display: 'flex', alignItems: 'center', py: 1, px: 2 }}>
                                <TextField type="number" value={item.quantity} onChange={(e) => updateCartQuantity(item.id, e.target.value)} sx={{ width: '15%' }} size="small" disabled={item.isWeighted} inputProps={{ min: 1, max: item.stock, style: { textAlign: 'center' } }} />
-                               <ListItemText primary={item.name} secondary={!item.isWeighted ? `$${item.price_per_unit.toFixed(2)}` : 'Por Peso'} sx={{ flexGrow: 1, ml: 2 }} />
+                               <ListItemText primary={item.name} secondary={!item.isWeighted ? `${item.price_per_unit.toFixed(2)}` : 'Por Peso'} sx={{ flexGrow: 1, ml: 2 }} />
                                <Typography sx={{ width: '25%', fontWeight: 'bold', textAlign: 'right' }}>${item.final_price.toFixed(2)}</Typography>
                                <IconButton edge="end" color="error" onClick={() => handleRemoveItem(item.id)} sx={{ ml: 1 }}><DeleteIcon /></IconButton>
                            </ListItem>
@@ -212,7 +222,7 @@ const POSPage = () => {
                 </Box>
                 <Box sx={{ pt: 2, mt: 'auto', borderTop: 1, borderColor: 'divider' }}>
                     <Box sx={{ px: 2, mb: 2 }}>
-                        <FormControlLabel control={<Switch checked={applyTableService} onChange={(e) => setApplyTableService(e.target.checked)} color="secondary" />} label={`Servicio de Mesa (+ $${tableServiceFee.toFixed(2)})`} disabled={cart.length === 0 || tableServiceFee <= 0}/>
+                        <FormControlLabel control={<Switch checked={applyTableService} onChange={(e) => setApplyTableService(e.target.checked)} color="secondary" />} label={`Servicio de Mesa (+ ${tableServiceFee.toFixed(2)})`} disabled={cart.length === 0 || tableServiceFee <= 0}/>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
                             <Typography variant="h5">Total:</Typography>
                             <Typography variant="h4" sx={{ fontWeight: 500 }}>${total.toFixed(2)}</Typography>
@@ -228,6 +238,7 @@ const POSPage = () => {
                                 <Grid item xs={6}><Button fullWidth variant="contained" onClick={() => handleFinalizeSale('Tarjeta')} startIcon={<CreditCardIcon />} sx={{ height: '50px' }}>Tarjeta</Button></Grid>
                                 <Grid item xs={6}><Button fullWidth variant="contained" onClick={() => handleFinalizeSale('Transferencia')} startIcon={<SwapHorizIcon />} sx={{ height: '50px' }}>Transf.</Button></Grid>
                                 <Grid item xs={6}><Button fullWidth variant="contained" onClick={() => handleFinalizeSale('QR')} startIcon={<QrCodeIcon />} sx={{ height: '50px' }}>QR</Button></Grid>
+                                <Grid item xs={12}><Button fullWidth variant="outlined" onClick={() => setSplitPaymentModalOpen(true)} startIcon={<CallSplitIcon />} sx={{ height: '50px' }}>Pago Mixto</Button></Grid>
                             </Grid>
                             <Button fullWidth variant="text" size="small" color="error" sx={{mt: 1}} onClick={() => setShowPaymentOptions(false)}>Cancelar</Button>
                         </Box>
@@ -240,6 +251,13 @@ const POSPage = () => {
                 onClose={() => setWeightModalOpen(false)}
                 onConfirm={handleWeightConfirm}
                 product={productToWeigh}
+            />
+
+            <SplitPaymentModal 
+                open={isSplitPaymentModalOpen}
+                onClose={() => setSplitPaymentModalOpen(false)}
+                total={total}
+                onConfirm={handleFinalizeSale}
             />
         </Box>
     );

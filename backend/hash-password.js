@@ -8,8 +8,8 @@ bcrypt.hash(plainPassword, saltRounds, function(err, hash) {
         console.error('Error al hashear la contraseña:', err);
         return;
     }
-    console.log('Contraseña en texto plano:', plainPassword);
-    console.log('Hash generado:', hash);
-    console.log("\nEjecuta esta sentencia SQL en MySQL Workbench para actualizar al usuario:");
-    console.log(`UPDATE users SET password = '${hash}' WHERE username = 'admin';`);
+
+
+
+
 });
