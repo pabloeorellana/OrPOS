@@ -75,7 +75,7 @@ const Login = () => {
                 <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}><ShoppingCartOutlinedIcon /></Avatar>
                 <Typography component="h1" variant="h5">
                     {/* El título se basa en si 'tenantPath' existe en la URL */}
-                    {tenantPath ? `Acceso a ${tenantPath}` : "Sistema de Gestión"}
+                    {tenantPath ? `Acceso a ${tenantPath}` : "Sistema de Gestión OR Pos"}
                 </Typography>
                 <Typography component="p" variant="subtitle1" color="text.secondary">Bienvenido</Typography>
                 <Box component="form" onSubmit={handleLogin} sx={{ mt: 1, width: '100%' }}>
