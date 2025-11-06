@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { TextField, Button, Typography, Box, Alert, Paper, Avatar, CssBaseline, CircularProgress } from '@mui/material';
-import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/axios';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -72,7 +71,7 @@ const Login = () => {
         <Box sx={{ minHeight: '100vh', backgroundColor: '#f5f5f5', display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
             <CssBaseline />
             <Paper elevation={6} sx={{ p: 4, borderRadius: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', maxWidth: '400px', width: '100%' }}>
-                <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}><ShoppingCartOutlinedIcon /></Avatar>
+                <Box sx={{ m: 1, bgcolor: 'transparent' }}><img src="/orposlogofb.png" alt="OrPOS Logo" style={{ height: '60px' }} /></Box>
                 <Typography component="h1" variant="h5">
                     {/* El título se basa en si 'tenantPath' existe en la URL */}
                     {tenantPath ? `Acceso a ${tenantPath}` : "Sistema de Gestión OR Pos"}

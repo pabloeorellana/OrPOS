@@ -85,10 +85,8 @@ const DashboardLayout = () => {
 
     const drawerContent = (
         <div>
-            <Toolbar sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Typography variant="h5" noWrap component="div" sx={{ fontWeight: 'bold' }}>
-                    OrPOS
-                </Typography>
+            <Toolbar sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
+                <img src="/orposlogo.png" alt="OrPOS Logo" style={{ height: '40px' }} />
                 {/* 
                 En el futuro, podrías reemplazar Typography con un logo:
                 <img src="/path/to/logo.svg" alt="OrPOS Logo" style={{ height: '40px' }} />
