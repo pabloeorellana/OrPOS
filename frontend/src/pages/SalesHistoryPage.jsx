@@ -8,7 +8,7 @@ import ReturnModal from '../components/ReturnModal';
 
 const Row = ({ row, onReturnClick }) => {
     const [open, setOpen] = useState(false);
-    const [details, setDetails] = useState({ saleItems: [], returnItems: [] });
+    const [details, setDetails] = useState({ sale: null, saleItems: [], returnItems: [] });
     const [loading, setLoading] = useState(false);
 
     const fetchDetails = () => {
@@ -94,6 +94,22 @@ const Row = ({ row, onReturnClick }) => {
                                         </Table>
                                     </TableContainer>
                                     
+                                    {details.sale && details.sale.table_service_fee > 0 && (
+                                        <Box sx={{ mt: 2 }}>
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>Servicio de Mesa</Typography>
+                                            <TableContainer component={Paper}>
+                                                <Table size="small">
+                                                    <TableBody>
+                                                        <TableRow>
+                                                            <TableCell>Monto de servicio</TableCell>
+                                                            <TableCell align="right">${parseFloat(details.sale.table_service_fee).toFixed(2)}</TableCell>
+                                                        </TableRow>
+                                                    </TableBody>
+                                                </Table>
+                                            </TableContainer>
+                                        </Box>
+                                    )}
+
                                     {details.returnItems.length > 0 && (
                                         <Box>
                                             <Typography variant="subtitle2" color="error" sx={{ fontWeight: 'bold' }}>Items Devueltos</Typography>

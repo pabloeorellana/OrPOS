@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { AppBar, Toolbar, Typography, Button, Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, CssBaseline, Divider, Alert, AlertTitle } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, CssBaseline, Divider, Alert, AlertTitle, useTheme, useMediaQuery, IconButton } from '@mui/material';
 import { Outlet, Link } from 'react-router-dom';
+import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import InventoryIcon from '@mui/icons-material/Inventory';
@@ -46,12 +47,14 @@ const DashboardLayout = () => {
     const { user, logout, activeShift, isImpersonating, exitImpersonation } = useAuth();
     const [closeModalOpen, setCloseModalOpen] = useState(false);
     const [visibleMenuItems, setVisibleMenuItems] = useState([]);
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     useEffect(() => {
         if (!user) { setVisibleMenuItems([]); return; }
         const tenantInPath = getTenantFromPath();
 
-        // Menú de superadmin SOLO si es superadmin y NO estamos en una ruta de tenant
         if (user.isSuperAdmin && !tenantInPath) {
             setVisibleMenuItems([
                 { text: 'Dashboard Global', icon: <DashboardIcon />, path: '/superadmin-dashboard' },
@@ -73,45 +76,108 @@ const DashboardLayout = () => {
         }
     }, [user]);
 
+    const handleDrawerToggle = () => {
+        setMobileOpen(!mobileOpen);
+    };
+
     const tenant = getTenantFromPath();
-    // Para superadmin no se debe anteponer base de tenant
     const base = user?.isSuperAdmin ? '' : (tenant ? `/${tenant}` : '');
+
+    const drawerContent = (
+        <div>
+            <Toolbar sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Typography variant="h5" noWrap component="div" sx={{ fontWeight: 'bold' }}>
+                    OrPOS
+                </Typography>
+                {/* 
+                En el futuro, podrías reemplazar Typography con un logo:
+                <img src="/path/to/logo.svg" alt="OrPOS Logo" style={{ height: '40px' }} />
+                */}
+            </Toolbar>
+            <Divider />
+            <List>
+                {visibleMenuItems.map((item) => (
+                    <ListItem key={item.text} disablePadding component={Link} to={`${base}${item.path}`} sx={{ color: 'inherit', textDecoration: 'none' }} onClick={isMobile ? handleDrawerToggle : undefined}>
+                        <ListItemButton>
+                            <ListItemIcon>{item.icon}</ListItemIcon>
+                            <ListItemText primary={item.text} />
+                        </ListItemButton>
+                    </ListItem>
+                ))}
+            </List>
+        </div>
+    );
 
     return (
         <Box sx={{ display: 'flex' }}>
             <CssBaseline />
-            <AppBar position="fixed" sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px` }}>
+            <AppBar
+                position="fixed"
+                sx={{
+                    width: { sm: `calc(100% - ${drawerWidth}px)` },
+                    ml: { sm: `${drawerWidth}px` },
+                }}
+            >
                 <Toolbar>
-                    <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-                        {user?.isSuperAdmin && !tenant ? 'Panel de Superadministrador' : 'Panel de Control'}
-                    </Typography>
+                    <IconButton
+                        color="inherit"
+                        aria-label="open drawer"
+                        edge="start"
+                        onClick={handleDrawerToggle}
+                        sx={{ mr: 2, display: { sm: 'none' } }}
+                    >
+                        <MenuIcon />
+                    </IconButton>
+                    <Box sx={{ flexGrow: 1 }} />
+
                     {!user?.isSuperAdmin && (
                         <>
-                            <Typography variant="subtitle2" sx={{ mr: 2, border: '1px solid white', borderRadius: 1, px: 1, py: 0.5 }}>
+                            <Typography variant="subtitle2" sx={{ mr: 2, border: '1px solid white', borderRadius: 1, px: 1, py: 0.5, display: { xs: 'none', md: 'block' } }}>
                                 Caja Abierta: ${activeShift?.opening_balance ? parseFloat(activeShift.opening_balance).toFixed(2) : '0.00'}
                             </Typography>
-                            <Typography variant="subtitle1" sx={{ mr: 2 }}>Hola, {user ? user.username : 'Invitado'}</Typography>
-                            <Button color="inherit" onClick={() => setCloseModalOpen(true)}>Cerrar Caja</Button>
+                            <Typography variant="subtitle1" sx={{ mr: 2, display: { xs: 'none', md: 'block' } }}>Hola, {user ? user.username : 'Invitado'}</Typography>
+                            <Button color="inherit" onClick={() => setCloseModalOpen(true)} sx={{ display: { xs: 'none', md: 'block' } }}>Cerrar Caja</Button>
                         </>
                     )}
                     <Button color="inherit" onClick={logout} sx={{ ml: 1 }}>Cerrar Sesión</Button>
                 </Toolbar>
             </AppBar>
-            <Drawer sx={{ width: drawerWidth, flexShrink: 0, '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' } }} variant="permanent" anchor="left">
-                <Toolbar />
-                <Divider />
-                <List>
-                    {visibleMenuItems.map((item) => (
-                        <ListItem key={item.text} disablePadding component={Link} to={`${base}${item.path}`} sx={{ color: 'inherit', textDecoration: 'none' }}>
-                            <ListItemButton>
-                                <ListItemIcon>{item.icon}</ListItemIcon>
-                                <ListItemText primary={item.text} />
-                            </ListItemButton>
-                        </ListItem>
-                    ))}
-                </List>
-            </Drawer>
-            <Box component="main" sx={{ flexGrow: 1, bgcolor: 'background.default', p: 3, height: '100vh', overflow: 'auto' }}>
+            <Box
+                component="nav"
+                sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+                aria-label="mailbox folders"
+            >
+                {/* Temporary Drawer for Mobile */}
+                <Drawer
+                    variant="temporary"
+                    open={mobileOpen}
+                    onClose={handleDrawerToggle}
+                    ModalProps={{
+                        keepMounted: true, // Better open performance on mobile.
+                    }}
+                    sx={{
+                        display: { xs: 'block', sm: 'none' },
+                        '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+                    }}
+                >
+                    {drawerContent}
+                </Drawer>
+                {/* Permanent Drawer for Desktop */}
+                <Drawer
+                    variant="permanent"
+                    sx={{
+                        display: { xs: 'none', sm: 'block' },
+                        '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+                    }}
+                    open
+                >
+                    {drawerContent}
+                </Drawer>
+            </Box>
+            <Box
+                component="main"
+                sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` }, height: '100vh', overflow: 'auto' }}
+            >
                 <Toolbar />
                 {isImpersonating && (
                     <Alert severity="warning" sx={{ mb: 2 }} action={

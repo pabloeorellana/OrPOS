@@ -121,4 +121,24 @@ router.post('/sales-by-date', hasPermission('reports:view'), async (req, res) =>
     }
 });
 
+router.get('/low-stock-products', async (req, res) => {
+    if (!req.user.permissions.includes('dashboard:view')) {
+        return res.status(403).json({ message: 'No tienes permiso para ver estos datos.' });
+    }
+    const tenantId = req.user.tenantId;
+    try {
+        const query = `
+            SELECT id, name, stock
+            FROM products
+            WHERE stock < 5 AND tenant_id = ?
+            ORDER BY stock ASC;
+        `;
+        const [rows] = await db.query(query, [tenantId]);
+        res.json(rows);
+    } catch (error) { 
+        console.error("Error al obtener productos con bajo stock:", error);
+        res.status(500).json({ message: "Error en el servidor." }); 
+    }
+});
+
 module.exports = router;

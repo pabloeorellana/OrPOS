@@ -45,6 +45,7 @@ const POSPage = () => {
     const [subtotal, setSubtotal] = useState(0);
     const [total, setTotal] = useState(0);
     const [tableServiceFee, setTableServiceFee] = useState(0);
+    const [isTableServiceEnabled, setTableServiceEnabled] = useState(false);
     const [applyTableService, setApplyTableService] = useState(false);
     const [allProducts, setAllProducts] = useState([]);
     const [filteredProducts, setFilteredProducts] = useState([]);
@@ -60,13 +61,15 @@ const POSPage = () => {
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                const [productsRes, settingsRes] = await Promise.all([
+                const [productsRes, feeRes, enableRes] = await Promise.all([
                     apiClient.get('/products'),
-                    apiClient.get('/settings/table_service_fee')
+                    apiClient.get('/settings/table_service_fee'),
+                    apiClient.get('/settings/enable_table_service')
                 ]);
                 setAllProducts(productsRes.data);
                 setFilteredProducts(productsRes.data);
-                setTableServiceFee(parseFloat(settingsRes.data.value) || 0);
+                setTableServiceFee(parseFloat(feeRes.data.value) || 0);
+                setTableServiceEnabled(enableRes.data.value === '1');
             } catch (error) { console.error("Error al cargar datos iniciales:", error); }
         };
         fetchInitialData();
@@ -172,6 +175,7 @@ const POSPage = () => {
                 quantity: item.quantity,
                 price: item.price_per_unit
             })),
+            tableServiceFee: applyTableService ? tableServiceFee : 0,
         };
 
         if (Array.isArray(payment)) {
@@ -191,17 +195,17 @@ const POSPage = () => {
         }
     };
     return (
-        <Box sx={{ display: 'flex', gap: 2, height: 'calc(100vh - 112px)' }}>
-            <Paper sx={{ width: '60%', p: 2, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, height: { md: 'calc(100vh - 112px)' } }}>
+            <Paper sx={{ width: { xs: '100%', md: '60%' }, p: 2, display: 'flex', flexDirection: 'column' }}>
                 <Box component="form" onSubmit={handleBarcodeSubmit}><TextField fullWidth label="Buscar o escanear producto" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} inputRef={barcodeInputRef} /></Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, pb: 1, borderBottom: 1, borderColor: 'divider', color: 'text.secondary', fontWeight: 'bold' }}>
                     <Typography>PRODUCTO</Typography>
                     <Typography sx={{ width: '100px', textAlign: 'right', mr: 7.5 }}>PRECIO</Typography>
                 </Box>
-                <Box sx={{ flexGrow: 1, overflowY: 'auto', pt: 1 }}>{filteredProducts.map(product => (<ProductCard key={product.id} product={product} onAdd={addProductToCart} />))}</Box>
+                <Box sx={{ flexGrow: 1, overflowY: 'auto', pt: 1, minHeight: '200px' }}>{filteredProducts.map(product => (<ProductCard key={product.id} product={product} onAdd={addProductToCart} />))}</Box>
             </Paper>
 
-            <Paper sx={{ width: '40%', p: 2, display: 'flex', flexDirection: 'column', bgcolor: '#eef2f5' }}>
+            <Paper sx={{ width: { xs: '100%', md: '40%' }, p: 2, display: 'flex', flexDirection: 'column', bgcolor: '#eef2f5' }}>
                 <Typography variant="h6">Venta Actual</Typography>
                 <Box sx={{ display: 'flex', color: 'text.secondary', fontWeight: 'bold', borderBottom: 1, borderColor: 'divider', pb: 1, mt: 1, px: 2 }}>
                     <Typography sx={{ width: '15%' }}>CANT</Typography>
@@ -222,7 +226,9 @@ const POSPage = () => {
                 </Box>
                 <Box sx={{ pt: 2, mt: 'auto', borderTop: 1, borderColor: 'divider' }}>
                     <Box sx={{ px: 2, mb: 2 }}>
-                        <FormControlLabel control={<Switch checked={applyTableService} onChange={(e) => setApplyTableService(e.target.checked)} color="secondary" />} label={`Servicio de Mesa (+ ${tableServiceFee.toFixed(2)})`} disabled={cart.length === 0 || tableServiceFee <= 0}/>
+                        {isTableServiceEnabled && (
+                            <FormControlLabel control={<Switch checked={applyTableService} onChange={(e) => setApplyTableService(e.target.checked)} color="secondary" />} label={`Servicio de Mesa (+ ${tableServiceFee.toFixed(2)})`} disabled={cart.length === 0 || tableServiceFee <= 0}/>
+                        )}
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
                             <Typography variant="h5">Total:</Typography>
                             <Typography variant="h4" sx={{ fontWeight: 500 }}>${total.toFixed(2)}</Typography>

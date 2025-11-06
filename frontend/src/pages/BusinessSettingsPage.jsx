@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, TextField, Button, Grid, CircularProgress, LinearProgress, Alert } from '@mui/material';
+import { Box, Paper, Typography, TextField, Button, Grid, CircularProgress, LinearProgress, Alert, Switch, FormControlLabel, Divider } from '@mui/material';
 import apiClient from '../api/axios';
 
 const UsageBar = ({ current, max, label }) => {
@@ -15,37 +15,82 @@ const UsageBar = ({ current, max, label }) => {
 const BusinessSettingsPage = () => {
     const [businessData, setBusinessData] = useState(null);
     const [businessName, setBusinessName] = useState('');
+    const [initialBusinessName, setInitialBusinessName] = useState('');
+
+    const [tableServiceFee, setTableServiceFee] = useState('0');
+    const [enableTableService, setEnableTableService] = useState(false);
+    const [initialFee, setInitialFee] = useState('0');
+    const [initialEnable, setInitialEnable] = useState(false);
+
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const [savingName, setSavingName] = useState(false);
+    const [savingPos, setSavingPos] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        setLoading(true);
-        apiClient.get('/tenants/my-business')
-            .then(res => {
-                setBusinessData(res.data);
-                setBusinessName(res.data.name);
-            })
-            .catch(err => setError("No se pudo cargar la información de tu negocio."))
-            .finally(() => setLoading(false));
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                const [businessRes, feeRes, enableRes] = await Promise.all([
+                    apiClient.get('/tenants/my-business'),
+                    apiClient.get('/settings/table_service_fee'),
+                    apiClient.get('/settings/enable_table_service')
+                ]);
+
+                setBusinessData(businessRes.data);
+                setBusinessName(businessRes.data.name);
+                setInitialBusinessName(businessRes.data.name);
+
+                setTableServiceFee(feeRes.data.value || '0');
+                setInitialFee(feeRes.data.value || '0');
+
+                setEnableTableService(enableRes.data.value === '1');
+                setInitialEnable(enableRes.data.value === '1');
+
+            } catch (err) {
+                setError("No se pudo cargar la información de tu negocio.");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
     }, []);
 
     const handleSaveName = async () => {
-        setSaving(true);
+        setSavingName(true);
         try {
             await apiClient.put('/tenants/my-business', { name: businessName });
+            setInitialBusinessName(businessName);
             alert("Nombre del negocio actualizado.");
-            // Actualizamos el estado local para que refleje el cambio
-            setBusinessData(prev => ({ ...prev, name: businessName }));
         } catch (error) {
             alert("No se pudo actualizar el nombre.");
         } finally {
-            setSaving(false);
+            setSavingName(false);
+        }
+    };
+
+    const handleSavePosSettings = async () => {
+        setSavingPos(true);
+        try {
+            await Promise.all([
+                apiClient.put('/settings/table_service_fee', { value: tableServiceFee }),
+                apiClient.put('/settings/enable_table_service', { value: enableTableService ? '1' : '0' })
+            ]);
+            setInitialFee(tableServiceFee);
+            setInitialEnable(enableTableService);
+            alert("Configuración del POS actualizada.");
+        } catch (error) {
+            alert("No se pudo actualizar la configuración del POS.");
+        } finally {
+            setSavingPos(false);
         }
     };
 
     if (loading) return <CircularProgress />;
     if (error) return <Alert severity="error">{error}</Alert>;
+
+    const isNameChanged = businessName !== initialBusinessName;
+    const arePosSettingsChanged = tableServiceFee !== initialFee || enableTableService !== initialEnable;
 
     return (
         <Paper sx={{ p: 3 }}>
@@ -63,9 +108,9 @@ const BusinessSettingsPage = () => {
                         variant="contained" 
                         sx={{ mt: 2 }} 
                         onClick={handleSaveName}
-                        disabled={saving || businessName === businessData.name}
+                        disabled={savingName || !isNameChanged}
                     >
-                        {saving ? <CircularProgress size={24} /> : 'Guardar Nombre'}
+                        {savingName ? <CircularProgress size={24} /> : 'Guardar Nombre'}
                     </Button>
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -78,6 +123,31 @@ const BusinessSettingsPage = () => {
                     )}
                     <Button variant="outlined" sx={{ mt: 2 }}>
                         Contactar a Soporte para Actualizar Plan
+                    </Button>
+                </Grid>
+                <Grid item xs={12}><Divider sx={{ my: 2 }} /></Grid>
+                <Grid item xs={12} md={6}>
+                    <Typography variant="h6" gutterBottom>Configuración de POS</Typography>
+                    <FormControlLabel
+                        control={<Switch checked={enableTableService} onChange={(e) => setEnableTableService(e.target.checked)} />}
+                        label="Habilitar Servicio de Mesa"
+                    />
+                    <TextField
+                        label="Monto Fijo del Servicio de Mesa"
+                        type="number"
+                        value={tableServiceFee}
+                        onChange={(e) => setTableServiceFee(e.target.value)}
+                        fullWidth
+                        disabled={!enableTableService}
+                        sx={{ mt: 2 }}
+                    />
+                    <Button 
+                        variant="contained" 
+                        sx={{ mt: 2 }} 
+                        onClick={handleSavePosSettings}
+                        disabled={savingPos || !arePosSettingsChanged}
+                    >
+                        {savingPos ? <CircularProgress size={24} /> : 'Guardar Configuración de POS'}
                     </Button>
                 </Grid>
             </Grid>

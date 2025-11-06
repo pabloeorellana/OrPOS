@@ -16,6 +16,9 @@ router.get('/:key', async (req, res) => {
             if(req.params.key === 'table_service_fee') {
                 return res.json({ value: '0' });
             }
+            if(req.params.key === 'enable_table_service') {
+                return res.json({ value: '0' });
+            }
             res.status(404).json({ message: 'Configuración no encontrada.' });
         }
     } catch (error) { res.status(500).json({ message: 'Error en el servidor.' }); }

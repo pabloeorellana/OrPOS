@@ -97,7 +97,6 @@ const ShiftsHistoryPage = () => {
             })
             .finally(() => setLoading(false));
     }, []);
-
     return (
         <Box>
             <Typography variant="h4" gutterBottom>Historial y Arqueo de Cajas</Typography>

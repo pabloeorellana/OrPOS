@@ -7,18 +7,14 @@ async function up() {
     await connection.beginTransaction();
     await connection.query(`
       ALTER TABLE sales 
-      ADD COLUMN payment_methods JSON DEFAULT NULL,
-      ADD COLUMN payment_method_legacy VARCHAR(255) DEFAULT NULL
+      ADD COLUMN table_service_fee DECIMAL(10, 2) DEFAULT 0.00
     `);
-    await connection.query(`UPDATE sales SET payment_method_legacy = payment_method`);
-    await connection.query(`ALTER TABLE sales DROP COLUMN payment_method`);
-    await connection.query(`ALTER TABLE sales RENAME COLUMN payment_method_legacy TO payment_method`);
     await connection.commit();
-    console.log('Migration successful for payment_methods.');
+    console.log('Migration successful: added table_service_fee to sales table.');
   } catch (error) {
     if (connection) await connection.rollback();
     console.error('Error running migration:', error);
-    throw error;
+    throw error; // Re-throw error to be caught by the final catch block
   } finally {
     if (connection) connection.release();
   }
@@ -31,5 +27,6 @@ up()
     process.exit(0);
   })
   .catch(() => {
+    // Error is already logged in the up() function
     process.exit(1);
   });

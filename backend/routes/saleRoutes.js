@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
     try {
         let query = `
             SELECT 
-                s.id, s.sale_date, s.total_amount, s.payment_method, s.return_status, 
+                s.id, s.sale_date, s.total_amount, s.payment_method, s.return_status, s.table_service_fee,
                 u.username,
                 (SELECT SUM(r.total_amount) FROM returns r WHERE r.sale_id = s.id) as total_returned_amount
             FROM sales s 
@@ -51,11 +51,13 @@ router.get('/:id', async (req, res) => {
     }
 
     try {
-        const [saleCheck] = await db.query('SELECT user_id FROM sales WHERE id = ? AND tenant_id = ?', [id, tenantId]);
-        if (saleCheck.length === 0) {
+        const [saleRows] = await db.query('SELECT * FROM sales WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+        if (saleRows.length === 0) {
             return res.status(404).json({ message: "Venta no encontrada." });
         }
-        if (!canViewAll && saleCheck[0].user_id !== req.user.id) {
+        const sale = saleRows[0];
+
+        if (!canViewAll && sale.user_id !== req.user.id) {
             return res.status(403).json({ message: "No puedes ver los detalles de una venta que no es tuya." });
         }
 
@@ -65,7 +67,7 @@ router.get('/:id', async (req, res) => {
         const returnItemsQuery = `SELECT ri.quantity, ri.price_at_return, p.name FROM return_items ri JOIN returns r ON ri.return_id = r.id JOIN products p ON ri.product_id = p.id WHERE r.sale_id = ?`;
         const [returnItems] = await db.query(returnItemsQuery, [id]);
         
-        res.json({ saleItems, returnItems });
+        res.json({ sale, saleItems, returnItems });
     } catch (error) {
         console.error("Error al obtener detalles de la venta:", error);
         res.status(500).json({ message: "Error en el servidor." });
@@ -73,7 +75,7 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/', hasPermission('pos:use'), async (req, res) => {
-    const { userId, totalAmount, items, shiftId, paymentMethod, paymentMethods } = req.body;
+    const { userId, totalAmount, items, shiftId, paymentMethod, paymentMethods, tableServiceFee = 0 } = req.body;
     const tenantId = req.user.tenantId;
     if (userId !== req.user.id) return res.status(403).json({ message: "Acción no permitida." });
     if (!items || items.length === 0) return res.status(400).json({ message: "El carrito está vacío." });
@@ -105,8 +107,8 @@ router.post('/', hasPermission('pos:use'), async (req, res) => {
         }
 
         const [saleResult] = await connection.query(
-            'INSERT INTO sales (user_id, total_amount, shift_id, payment_method, payment_methods, tenant_id) VALUES (?, ?, ?, ?, ?, ?)', 
-            [userId, totalAmount, shiftId, finalPaymentMethod, finalPaymentMethodsJson, tenantId]
+            'INSERT INTO sales (user_id, total_amount, shift_id, payment_method, payment_methods, tenant_id, table_service_fee) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+            [userId, totalAmount, shiftId, finalPaymentMethod, finalPaymentMethodsJson, tenantId, tableServiceFee]
         );
         const saleId = saleResult.insertId;
         const saleItemsValues = items.map(item => [saleId, item.id, item.quantity, item.price]);
@@ -115,7 +117,7 @@ router.post('/', hasPermission('pos:use'), async (req, res) => {
             await connection.query('UPDATE products SET stock = stock - ? WHERE id = ? AND tenant_id = ?', [item.quantity, item.id, tenantId]);
         }
         await connection.commit();
-        await logAction(req.user.id, 'SALE_CREATE', req.user.tenantId, { saleId, total: totalAmount, payment: finalPaymentMethod, payment_methods: finalPaymentMethodsJson });
+        await logAction(req.user.id, 'SALE_CREATE', req.user.tenantId, { saleId, total: totalAmount, payment: finalPaymentMethod, payment_methods: finalPaymentMethodsJson, tableServiceFee });
         res.status(201).json({ message: "Venta registrada exitosamente" });
     } catch (error) {
         await connection.rollback();
@@ -125,5 +127,4 @@ router.post('/', hasPermission('pos:use'), async (req, res) => {
         connection.release();
     }
 });
-
 module.exports = router;
