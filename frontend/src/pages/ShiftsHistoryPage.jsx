@@ -3,6 +3,7 @@ import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, Ta
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import apiClient from '../api/axios';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const formatDuration = (start, end) => {
     if (!start || !end) return 'N/A';
@@ -86,6 +87,7 @@ const Row = ({ row }) => {
 };
 
 const ShiftsHistoryPage = () => {
+    const { showSnackbar } = useSnackbar();
     const [shifts, setShifts] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -93,7 +95,7 @@ const ShiftsHistoryPage = () => {
         apiClient.get('/shifts')
             .then(res => setShifts(res.data))
             .catch(err => {
-                if (err.response?.status === 403) alert("No tienes permiso para ver esta sección.");
+                if (err.response?.status === 403) showSnackbar("No tienes permiso para ver esta sección.", "error");
             })
             .finally(() => setLoading(false));
     }, []);

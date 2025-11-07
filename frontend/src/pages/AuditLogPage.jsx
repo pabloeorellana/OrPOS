@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip } from '@mui/material';
 import apiClient from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const AuditLogPage = () => {
     const { user } = useAuth();
+    const { showSnackbar } = useSnackbar();
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -17,7 +19,7 @@ const AuditLogPage = () => {
             })
             .catch(err => {
                 console.error('[AuditLogPage] error:', err?.response?.status, err?.response?.data || err.message);
-                if (err.response?.status === 403) alert('No tienes permiso para ver esta sección.');
+                if (err.response?.status === 403) showSnackbar('No tienes permiso para ver esta sección.', 'error');
             })
             .finally(() => setLoading(false));
     }, []);

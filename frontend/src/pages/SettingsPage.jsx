@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, TextField, Button } from '@mui/material';
+import { TextField, Button, Typography, Box } from '@mui/material';
+import Paper from '@mui/material/Paper';
 import apiClient from '../api/axios';
+import { useSnackbar } from '../context/SnackbarContext';
+import PasswordChangeModal from '../components/PasswordChangeModal'; // Import PasswordChangeModal
+import { useAuth } from '../context/AuthContext'; // Correct import for useAuth hook
 
 const SettingsPage = () => {
+    const { showSnackbar } = useSnackbar();
+    const { user } = useAuth(); // Correct usage of useAuth hook
     const [tableServiceFee, setTableServiceFee] = useState(0);
+    const [passwordModalOpen, setPasswordModalOpen] = useState(false); // State for password modal
 
     useEffect(() => {
         apiClient.get('/settings/table_service_fee')
@@ -12,8 +19,23 @@ const SettingsPage = () => {
 
     const handleSave = () => {
         apiClient.put('/settings/table_service_fee', { value: tableServiceFee })
-            .then(() => alert('Configuración guardada.'))
-            .catch(() => alert('Error al guardar.'));
+            .then(() => showSnackbar('Configuración guardada.', 'success'))
+            .catch(() => showSnackbar('Error al guardar.', 'error'));
+    };
+
+    const handleOpenPasswordModal = () => {
+        setPasswordModalOpen(true);
+    };
+
+    const handleUpdateOwnPassword = async (currentPassword, newPassword) => {
+        try {
+            await apiClient.put('/users/change-password', { currentPassword, newPassword });
+            showSnackbar("Contraseña actualizada correctamente.", "success");
+        } catch (error) {
+            showSnackbar(error.response?.data?.message || "Error al actualizar la contraseña.", "error");
+        } finally {
+            setPasswordModalOpen(false);
+        }
     };
 
     return (
@@ -32,6 +54,23 @@ const SettingsPage = () => {
                     Guardar Cambios
                 </Button>
             </Box>
+
+            <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>Cambiar Contraseña</Typography>
+            <Box sx={{ mt: 2 }}>
+                <Button variant="outlined" onClick={handleOpenPasswordModal}>
+                    Cambiar mi Contraseña
+                </Button>
+            </Box>
+
+            {user && (
+                <PasswordChangeModal
+                    open={passwordModalOpen}
+                    onClose={() => setPasswordModalOpen(false)}
+                    onSave={handleUpdateOwnPassword}
+                    userName={user.username} // Pass the logged-in user's username
+                    requireCurrentPassword={true}
+                />
+            )}
         </Paper>
     );
 };

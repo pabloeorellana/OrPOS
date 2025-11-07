@@ -4,10 +4,12 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import apiClient from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const ReportsPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { showSnackbar } = useSnackbar();
     const [startDate, setStartDate] = useState(new Date());
     const [endDate, setEndDate] = useState(new Date());
     const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -52,7 +54,7 @@ const ReportsPage = () => {
             setReportData(response.data);
         } catch (error) {
             console.error("Error al generar el reporte:", error);
-            alert("No se pudo generar el reporte.");
+            showSnackbar("No se pudo generar el reporte.", "error");
         } finally {
             setLoading(false);
         }

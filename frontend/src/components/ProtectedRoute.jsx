@@ -22,14 +22,12 @@ const ProtectedRoute = ({ children }) => {
     // redirigimos al login del tenant; si no, al login del superadmin.
     if (!user) {
         const tenant = getTenantFromPath();
-
-        // Evitar tratar rutas reservadas como si fueran tenants. Esto evita bucles
-        // al visitar /tenant-login o /login donde el primer segmento no es un tenant real.
+        // Reservadas que no representan tenant real
         const reserved = new Set(['tenant-login', 'login', 'superadmin', 'plans', 'permissions-admin']);
         if (tenant && !reserved.has(tenant)) {
-            return <Navigate to={`/tenant-login?tenant=${encodeURIComponent(tenant)}`} state={{ from: location }} replace />;
+            // Redirige a /<tenant>/login para mantener consistencia de rutas con prefijo
+            return <Navigate to={`/${tenant}/login`} state={{ from: location }} replace />;
         }
-
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 

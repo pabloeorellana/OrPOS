@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const jwt = require('jsonwebtoken'); // Importar jsonwebtoken
+const bcrypt = require('bcrypt'); // Importar bcrypt
 const router = express.Router();
 
 // Middleware para asegurar que solo el Superadmin acceda a estas rutas
@@ -103,6 +104,29 @@ router.post('/impersonate/:userId', async (req, res) => {
     } catch (error) {
         console.error("Error al suplantar usuario:", error);
         res.status(500).json({ message: "Error en el servidor." });
+    }
+});
+
+router.put('/users/:id/password', async (req, res) => {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!password) {
+        return res.status(400).json({ message: "La contraseña es obligatoria." });
+    }
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const [result] = await db.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Usuario no encontrado." });
+        }
+
+        res.status(200).json({ message: "Contraseña actualizada correctamente." });
+    } catch (error) {
+        console.error("Error al actualizar la contraseña:", error);
+        res.status(500).json({ message: "Error al actualizar la contraseña." });
     }
 });
 

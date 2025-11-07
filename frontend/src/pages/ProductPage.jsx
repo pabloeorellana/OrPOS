@@ -6,12 +6,17 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import apiClient from '../api/axios';
 import ProductModal from '../components/ProductModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const ProductPage = () => {
+    const { showSnackbar } = useSnackbar();
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [productToEdit, setProductToEdit] = useState(null);
+    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+    const [productToDelete, setProductToDelete] = useState(null);
 
     const fetchProducts = async () => {
         setLoading(true);
@@ -20,7 +25,7 @@ const ProductPage = () => {
             setProducts(response.data);
         } catch (error) {
             if (error.response?.status === 403) {
-                alert("No tienes permiso para ver los productos.");
+                showSnackbar("No tienes permiso para ver los productos.", "error");
             } else {
                 console.error("Error al cargar los productos:", error);
             }
@@ -60,20 +65,26 @@ const ProductPage = () => {
             fetchProducts();
         } catch (error) {
             console.error("Error al guardar el producto:", error.response?.data || error);
-            alert("Error al guardar el producto.");
+            showSnackbar("Error al guardar el producto.", "error");
         } finally {
             handleCloseModal();
         }
     };
 
-    const handleDeleteProduct = async (productId) => {
-        if (window.confirm('¿Estás seguro de que quieres eliminar este producto?')) {
-            try {
-                await apiClient.delete(`/products/${productId}`);
-                fetchProducts();
-            } catch (error) {
-                alert("Error al eliminar el producto.");
-            }
+    const handleDeleteProduct = (productId) => {
+        setProductToDelete(productId);
+        setConfirmModalOpen(true);
+    };
+
+    const confirmDeleteProduct = async () => {
+        try {
+            await apiClient.delete(`/products/${productToDelete}`);
+            fetchProducts();
+        } catch (error) {
+            showSnackbar("Error al eliminar el producto.", "error");
+        } finally {
+            setConfirmModalOpen(false);
+            setProductToDelete(null);
         }
     };
     
@@ -138,6 +149,13 @@ const ProductPage = () => {
                 />
             </Paper>
             <ProductModal open={modalOpen} onClose={handleCloseModal} onSave={handleSaveProduct} product={productToEdit} />
+            <ConfirmationModal
+                open={confirmModalOpen}
+                onClose={() => setConfirmModalOpen(false)}
+                onConfirm={confirmDeleteProduct}
+                title="Confirmar Eliminación"
+                message="¿Estás seguro de que quieres eliminar este producto?"
+            />
         </Box>
     );
 };

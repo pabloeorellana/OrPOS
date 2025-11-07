@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Modal, Box, Typography, TextField, Button, Grid, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const PaymentModal = ({ open, onClose, onSave }) => {
     const { activeShift } = useAuth();
+    const { showSnackbar } = useSnackbar();
     const [formData, setFormData] = useState({
         type: 'supplier',
         recipient: '',
@@ -19,7 +21,7 @@ const PaymentModal = ({ open, onClose, onSave }) => {
 
     const handleSave = () => {
         if (!activeShift) {
-            alert("No hay un turno activo. No se puede registrar el pago.");
+            showSnackbar("No hay un turno activo. No se puede registrar el pago.", "error");
             return;
         }
         onSave({ ...formData, shift_id: activeShift.id });

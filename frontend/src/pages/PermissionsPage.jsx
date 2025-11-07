@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Box, Paper, Typography, Select, MenuItem, FormControl, InputLabel, FormGroup, FormControlLabel, Switch, Button, CircularProgress, Grid, Divider } from '@mui/material';
 import apiClient from '../api/axios';
+import { useSnackbar } from '../context/SnackbarContext';
 
 // Mapeo de prefijos de permisos a títulos de grupo para la UI
 const groupTitles = {
@@ -20,6 +21,7 @@ const groupTitles = {
 };
 
 const PermissionsPage = () => {
+    const { showSnackbar } = useSnackbar();
     const [roles, setRoles] = useState([]);
     const [allPermissions, setAllPermissions] = useState([]);
     const [selectedRoleId, setSelectedRoleId] = useState('');
@@ -37,7 +39,7 @@ const PermissionsPage = () => {
                 setRoles(rolesRes.data);
                 setAllPermissions(permissionsRes.data);
             } catch (error) {
-                alert("Error al cargar los datos iniciales. Asegúrate de tener permiso para ver esta sección.");
+                showSnackbar("Error al cargar los datos iniciales. Asegúrate de tener permiso para ver esta sección.", "error");
             } finally {
                 setLoading(false);
             }
@@ -55,7 +57,7 @@ const PermissionsPage = () => {
                 const permissionIds = new Set(response.data.map(p => p.id));
                 setRolePermissions(permissionIds);
             } catch (error) {
-                alert("Error al cargar los permisos del rol.");
+                showSnackbar("Error al cargar los permisos del rol.", "error");
                 setRolePermissions(new Set());
             } finally {
                 setLoading(false);
@@ -84,9 +86,9 @@ const PermissionsPage = () => {
             await apiClient.put(`/permissions/role/${selectedRoleId}`, {
                 permissionIds: Array.from(rolePermissions)
             });
-            alert("Permisos guardados exitosamente.");
+            showSnackbar("Permisos guardados exitosamente.", "success");
         } catch (error) {
-            alert("Error al guardar los permisos.");
+            showSnackbar("Error al guardar los permisos.", "error");
         } finally {
             setSaving(false);
         }

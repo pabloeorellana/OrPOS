@@ -4,8 +4,12 @@ import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
 import apiClient from '../api/axios';
 import PaymentModal from '../components/PaymentModal'; // This component will be created next
+import { useSnackbar } from '../context/SnackbarContext';
+import { useAuth } from '../context/AuthContext';
 
 const PaymentsPage = () => {
+    const { showSnackbar } = useSnackbar();
+    const { activeShift } = useAuth();
 
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -22,7 +26,7 @@ const PaymentsPage = () => {
             setPayments(processedPayments);
         } catch (error) {
             if (error.response?.status === 403) {
-                alert("No tienes permiso para ver los pagos.");
+                showSnackbar("No tienes permiso para ver los pagos.", "error");
             } else {
                 console.error("Error fetching payments:", error);
             }
@@ -49,7 +53,7 @@ const PaymentsPage = () => {
             fetchPayments();
         } catch (error) {
             console.error("Error saving payment:", error.response?.data || error);
-            alert("Error saving payment.");
+            showSnackbar("Error saving payment.", "error");
         } finally {
             handleCloseModal();
         }
@@ -106,7 +110,7 @@ const PaymentsPage = () => {
                     getRowId={(row) => row.id}
                 />
             </Paper>
-            <PaymentModal open={modalOpen} onClose={handleCloseModal} onSave={handleSavePayment} />
+            <PaymentModal open={modalOpen} onClose={handleCloseModal} onSave={handleSavePayment} activeShiftId={activeShift?.id} />
         </Box>
     );
 };

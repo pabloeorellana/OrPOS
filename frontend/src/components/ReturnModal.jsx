@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Box, Typography, TextField, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Checkbox, Paper } from '@mui/material';
 import apiClient from '../api/axios';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const style = {
   position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
@@ -11,6 +12,7 @@ const style = {
 const ReturnModal = ({ open, onClose, onSave, sale }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { showSnackbar } = useSnackbar();
 
   // Cargar los items de la venta cuando el modal se abre
 useEffect(() => {
@@ -50,7 +52,7 @@ useEffect(() => {
   const handleSave = () => {
     const itemsToReturn = items.filter(item => item.selected);
     if (itemsToReturn.length === 0) {
-      alert("Debes seleccionar al menos un producto para devolver.");
+      showSnackbar("Debes seleccionar al menos un producto para devolver.", "warning");
       return;
     }
     

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Box, Typography, TextField, Button, Grid, Paper, Divider } from '@mui/material';
+import { Modal, Box, Typography, TextField, Button, Paper, Divider } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const style = { 
   position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
@@ -8,115 +9,137 @@ const style = {
   boxShadow: 24, p: 4, borderRadius: 2
 };
 
-const SummaryLine = ({ label, value }) => (
+// Evita romper si llegan null/undefined
+const SummaryLine = ({ label, value }) => {
+  const num = parseFloat(value);
+  const safe = Number.isFinite(num) ? num : 0;
+  return (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', my: 0.5 }}>
-        <Typography variant="body2">{label}:</Typography>
-        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>${value.toFixed(2)}</Typography>
+      <Typography variant="body2">{label}:</Typography>
+      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>${safe.toFixed(2)}</Typography>
     </Box>
-);
+  );
+};
 
-const CloseShiftModal = ({ open, onClose }) => {
-    const [closingBalance, setClosingBalance] = useState('');
-    const [closingVirtualBalance, setClosingVirtualBalance] = useState('');
-    const [summary, setSummary] = useState(null);
-    const { endShift } = useAuth();
+const CloseShiftModal = ({ open, onClose, onShiftClosed }) => {
+  const [closingBalance, setClosingBalance] = useState('');
+  const [closingVirtualBalance, setClosingVirtualBalance] = useState('');
+  const [summary, setSummary] = useState(null);
 
-    // Reset state when modal is opened
-    useEffect(() => {
-        if (open) {
-            setClosingBalance('');
-            setClosingVirtualBalance('');
-            setSummary(null);
-        }
-    }, [open]);
+  const { endShift, setActiveShift, logout } = useAuth();
+  const { showSnackbar } = useSnackbar();
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const cash = parseFloat(closingBalance) || 0;
-        const virtual = parseFloat(closingVirtualBalance) || 0;
+  // Al reabrir el modal, limpiamos estado
+  useEffect(() => {
+    if (open) {
+      setClosingBalance('');
+      setClosingVirtualBalance('');
+      setSummary(null);
+    }
+  }, [open]);
 
-        if (closingBalance === '' || isNaN(cash)) {
-            alert('Por favor, ingresa un monto de cierre de efectivo válido.');
-            return;
-        }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const cash = parseFloat(closingBalance) || 0;
+    const virtual = parseFloat(closingVirtualBalance) || 0;
 
-        const result = await endShift({ closingBalance: cash, closingVirtualBalance: virtual });
-        if (result) {
-            setSummary(result); // Guardar el resumen para mostrarlo
-        } else {
-            alert('No se pudo cerrar el turno.');
-        }
-    };
+    if (closingBalance === '' || Number.isNaN(cash)) {
+      showSnackbar('Por favor, ingresa un monto de cierre de efectivo válido.', 'warning');
+      return;
+    }
 
-    const handleClose = () => {
-        onClose();
-    };
+    const result = await endShift({ closingBalance: cash, closingVirtualBalance: virtual });
+    if (result) {
+      setSummary(result); // mostramos resumen
+    } else {
+      showSnackbar('No se pudo cerrar el turno.', 'error');
+    }
+  };
 
-    return (
-        <Modal open={open} onClose={handleClose}>
-            <Box sx={style}>
-                <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
-                    {summary ? 'Resumen del Turno' : 'Cerrar Caja'}
-                </Typography>
+  // NUEVA POLÍTICA: al cerrar el resumen, se cierra sesión
+  const handleSummaryClose = () => {
+    setSummary(null);
+    setActiveShift(null); // limpiamos turno actual en memoria
+    logout();             // forzamos volver a login
+  };
 
-                {summary ? (
-                    <Paper variant="outlined" sx={{ p: 2 }}>
-                        <Typography variant="subtitle1" gutterBottom>Desglose de Efectivo</Typography>
-                        <SummaryLine label="Saldo Inicial" value={summary.cashDetails.openingBalance} />
-                        <SummaryLine label="Ventas" value={summary.cashDetails.totalCashSales} />
-                        <SummaryLine label="Devoluciones" value={-summary.cashDetails.totalCashReturns} />
-                        <Divider sx={{ my: 1 }} />
-                        <SummaryLine label="Saldo Esperado" value={summary.cashDetails.expectedInCash} />
-                        <SummaryLine label="Saldo Real" value={summary.cashDetails.closingBalance} />
-                        <SummaryLine label="Diferencia" value={summary.cashDetails.difference} />
-                        
-                        <Divider sx={{ my: 2 }} />
+  // Evitamos cerrar el modal con "escape/click afuera" cuando está el resumen
+  const handleModalClose = () => {
+    if (!summary && onClose) onClose();
+  };
 
-                        <Typography variant="subtitle1" gutterBottom>Desglose Virtual</Typography>
-                        <SummaryLine label="Saldo Inicial" value={summary.virtualDetails.openingVirtualBalance} />
-                        <SummaryLine label="Ventas" value={summary.virtualDetails.totalVirtualSales} />
-                        <Divider sx={{ my: 1 }} />
-                        <SummaryLine label="Saldo Esperado" value={summary.virtualDetails.expectedVirtualBalance} />
-                        <SummaryLine label="Declarado" value={summary.virtualDetails.closingVirtualBalance} />
-                        <SummaryLine label="Diferencia" value={summary.virtualDetails.virtualDifference} />
-                    </Paper>
-                ) : (
-                    <Box component="form" onSubmit={handleSubmit}>
-                        <TextField
-                            label="Saldo Final en Efectivo"
-                            type="number"
-                            fullWidth
-                            required
-                            value={closingBalance}
-                            onChange={(e) => setClosingBalance(e.target.value)}
-                            sx={{ mt: 2 }}
-                            autoFocus
-                        />
-                        <TextField
-                            label="Saldo Final Billeteras Virtuales"
-                            type="number"
-                            fullWidth
-                            required
-                            value={closingVirtualBalance}
-                            onChange={(e) => setClosingVirtualBalance(e.target.value)}
-                            sx={{ mt: 2 }}
-                        />
-                    </Box>
-                )}
+  return (
+    <Modal open={open} onClose={summary ? undefined : handleModalClose}>
+      <Box sx={style}>
+        {summary ? (
+          <>
+            <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
+              Resumen del Turno
+            </Typography>
 
-                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-                    {summary ? (
-                        <Button onClick={handleClose} variant="contained">Cerrar</Button>
-                    ) : (
-                        <>
-                            <Button onClick={handleClose} sx={{ mr: 1 }}>Cancelar</Button>
-                            <Button onClick={handleSubmit} variant="contained" color="error">Cerrar Turno</Button>
-                        </>
-                    )}
-                </Box>
+            <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>Detalles de Efectivo:</Typography>
+              <SummaryLine label="Saldo Inicial" value={summary.cashDetails?.openingBalance} />
+              <SummaryLine label="Ventas en Efectivo" value={summary.cashDetails?.totalCashSales} />
+              <SummaryLine label="Devoluciones en Efectivo" value={summary.cashDetails?.totalCashReturns} />
+              <SummaryLine label="Pagos en Efectivo" value={summary.cashDetails?.totalCashPayments} />
+              <Divider sx={{ my: 1 }} />
+              <SummaryLine label="Esperado en Caja" value={summary.cashDetails?.expectedInCash} />
+              <SummaryLine label="Cierre de Caja" value={summary.cashDetails?.closingBalance} />
+              <SummaryLine label="Diferencia" value={summary.cashDetails?.difference} />
+            </Paper>
+
+            <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>Detalles Virtuales:</Typography>
+              <SummaryLine label="Saldo Inicial Virtual" value={summary.virtualDetails?.openingVirtualBalance} />
+              <SummaryLine label="Ventas Virtuales" value={summary.virtualDetails?.totalVirtualSales} />
+              <SummaryLine label="Pagos Virtuales" value={summary.virtualDetails?.totalVirtualPayments} />
+              <Divider sx={{ my: 1 }} />
+              <SummaryLine label="Esperado Virtual" value={summary.virtualDetails?.expectedVirtualBalance} />
+              <SummaryLine label="Cierre Virtual" value={summary.virtualDetails?.closingVirtualBalance} />
+              <SummaryLine label="Diferencia Virtual" value={summary.virtualDetails?.differenceVirtual} />
+            </Paper>
+
+            <Button onClick={handleSummaryClose} variant="contained" sx={{ mt: 3 }}>
+              Cerrar
+            </Button>
+          </>
+        ) : (
+          <>
+            <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
+              Cerrar Caja
+            </Typography>
+            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+              <TextField
+                label="Saldo de Cierre (Efectivo)"
+                type="number"
+                fullWidth
+                value={closingBalance}
+                onChange={(e) => setClosingBalance(e.target.value)}
+                sx={{ mb: 2 }}
+                required
+              />
+              <TextField
+                label="Saldo de Cierre (Virtual)"
+                type="number"
+                fullWidth
+                value={closingVirtualBalance}
+                onChange={(e) => setClosingVirtualBalance(e.target.value)}
+                sx={{ mb: 2 }}
+                required
+              />
+              <Button type="submit" variant="contained" color="primary" fullWidth>
+                Cerrar Turno
+              </Button>
+              <Button onClick={handleModalClose} fullWidth sx={{ mt: 1 }}>
+                Cancelar
+              </Button>
             </Box>
-        </Modal>
-    );
+          </>
+        )}
+      </Box>
+    </Modal>
+  );
 };
 
 export default CloseShiftModal;

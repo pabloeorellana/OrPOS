@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { TextField, Button, Typography, Box, Alert, Paper, Avatar, CssBaseline, CircularProgress } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { TextField, Button, Typography, Box, Paper, CssBaseline, CircularProgress, InputAdornment, IconButton } from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { useSnackbar } from '../context/SnackbarContext';
 import apiClient from '../api/axios';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
@@ -11,12 +13,34 @@ const Login = () => {
     const tenantPath = paramsTenant || searchParams.get('tenant') || undefined;
     const { login } = useAuth();
     const navigate = useNavigate();
+    const { showSnackbar } = useSnackbar();
 
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
+    const [tenantName, setTenantName] = useState(null); // Nombre comercial real
+    const [tenantLoading, setTenantLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
+    useEffect(() => {
+        // Obtiene nombre del tenant para branding si hay tenantPath
+        const fetchTenantName = async () => {
+            if (!tenantPath) { setTenantName(null); return; }
+            setTenantLoading(true);
+            try {
+                const { data } = await apiClient.get('/tenants/resolve', { params: { subdomain: tenantPath } });
+                setTenantName(data.name || tenantPath);
+            } catch (e) {
+                // Fallback al path si falla
+                setTenantName(tenantPath);
+            } finally {
+                setTenantLoading(false);
+            }
+        };
+        fetchTenantName();
+    }, [tenantPath]);
+
     const handleLogin = async (event) => {
         event.preventDefault();
         setIsSubmitting(true);
@@ -61,7 +85,7 @@ const Login = () => {
             }
             
         } catch (err) {
-            setError(err.response?.data?.message || 'No se pudo conectar al servidor.');
+            showSnackbar(err.response?.data?.message || 'No se pudo conectar al servidor.', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -73,14 +97,39 @@ const Login = () => {
             <Paper elevation={6} sx={{ p: 4, borderRadius: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', maxWidth: '400px', width: '100%' }}>
                 <Box sx={{ m: 1, bgcolor: 'transparent' }}><img src="/orposlogofb.png" alt="OrPOS Logo" style={{ height: '60px' }} /></Box>
                 <Typography component="h1" variant="h5">
-                    {/* El título se basa en si 'tenantPath' existe en la URL */}
-                    {tenantPath ? `Acceso a ${tenantPath}` : "Sistema de Gestión OR Pos"}
+                    {tenantPath
+                        ? `Acceso a ${tenantLoading ? '...' : (tenantName || tenantPath)}`
+                        : 'Sistema de Gestión OR Pos'}
                 </Typography>
                 <Typography component="p" variant="subtitle1" color="text.secondary">Bienvenido</Typography>
                 <Box component="form" onSubmit={handleLogin} sx={{ mt: 1, width: '100%' }}>
                     <TextField margin="normal" required fullWidth label="Usuario" name="username" autoComplete="username" autoFocus value={username} onChange={(e) => setUsername(e.target.value)} />
-                    <TextField margin="normal" required fullWidth name="password" label="Contraseña" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-                    {error && <Alert severity="error" sx={{ mt: 2, width: '100%' }}>{error}</Alert>}
+                    <TextField 
+                        margin="normal" 
+                        required 
+                        fullWidth 
+                        name="password" 
+                        label="Contraseña" 
+                        type={showPassword ? 'text' : 'password'} 
+                        autoComplete="current-password" 
+                        value={password} 
+                        onChange={(e) => setPassword(e.target.value)} 
+                        InputProps={{ 
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        aria-label="toggle password visibility"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        edge="end"
+                                    >
+                                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                                    </IconButton>
+                                </InputAdornment>
+                            )
+                        }}
+                    />
+                    {/* Error messages are now handled by Snackbar */}
                     <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2, py: 1.5 }} disabled={isSubmitting}>
                         {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Ingresar'}
                     </Button>

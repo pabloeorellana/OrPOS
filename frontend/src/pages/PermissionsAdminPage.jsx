@@ -7,12 +7,17 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import apiClient from '../api/axios';
 import PermissionAdminModal from '../components/PermissionAdminModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const PermissionsAdminPage = () => {
+    const { showSnackbar } = useSnackbar();
     const [permissions, setPermissions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [permissionToEdit, setPermissionToEdit] = useState(null);
+    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+    const [permissionToDelete, setPermissionToDelete] = useState(null);
 
     const fetchPermissions = async () => {
         setLoading(true);
@@ -20,7 +25,7 @@ const PermissionsAdminPage = () => {
             const response = await apiClient.get('/permissions/all');
             setPermissions(response.data);
         } catch (error) {
-            alert("No se pudieron cargar los permisos.");
+            showSnackbar("No se pudieron cargar los permisos.", "error");
         } finally {
             setLoading(false);
         }
@@ -36,16 +41,23 @@ const PermissionsAdminPage = () => {
             if (pId) { await apiClient.put(`/permissions/${pId}`, formData); }
             else { await apiClient.post('/permissions', formData); }
             fetchPermissions();
-        } catch (error) { alert(error.response?.data?.message || "Error al guardar."); }
+        } catch (error) { showSnackbar(error.response?.data?.message || "Error al guardar.", "error"); }
         finally { handleCloseModal(); }
     };
 
-    const handleDelete = async (pId) => {
-        if (window.confirm('¿Seguro?')) {
-            try {
-                await apiClient.delete(`/permissions/${pId}`);
-                fetchPermissions();
-            } catch (error) { alert(error.response?.data?.message || "Error al eliminar."); }
+    const handleDelete = (pId) => {
+        setPermissionToDelete(pId);
+        setConfirmModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        try {
+            await apiClient.delete(`/permissions/${permissionToDelete}`);
+            fetchPermissions();
+        } catch (error) { showSnackbar(error.response?.data?.message || "Error al eliminar.", "error"); }
+        finally {
+            setConfirmModalOpen(false);
+            setPermissionToDelete(null);
         }
     };
 
@@ -74,6 +86,13 @@ const PermissionsAdminPage = () => {
                 <DataGrid rows={permissions} columns={columns} loading={loading} />
             </Paper>
             <PermissionAdminModal open={modalOpen} onClose={handleCloseModal} onSave={handleSave} permission={permissionToEdit} />
+            <ConfirmationModal
+                open={confirmModalOpen}
+                onClose={() => setConfirmModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Confirmar Eliminación"
+                message="¿Seguro que quieres eliminar este permiso?"
+            />
         </Box>
     );
 };

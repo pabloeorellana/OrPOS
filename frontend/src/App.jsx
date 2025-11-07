@@ -23,6 +23,7 @@ import SettingsPage from './pages/SettingsPage';
 import ShiftsHistoryPage from './pages/ShiftsHistoryPage';
 import AuditLogPage from './pages/AuditLogPage';
 import ReportsPage from './pages/ReportsPage';
+import MessagesPage from './pages/MessagesPage';
 import PermissionsPage from './pages/PermissionsPage';
 import SuperadminPage from './pages/SuperadminPage';
 import BusinessSettingsPage from './pages/BusinessSettingsPage';
@@ -83,6 +84,7 @@ function App() {
           <Route path="reports" element={<PermissionProtectedRoute permission="reports:view"><ReportsPage /></PermissionProtectedRoute>} />
           <Route path="permissions" element={<PermissionProtectedRoute permission="users:manage"><PermissionsPage /></PermissionProtectedRoute>} />
           <Route path="business-settings" element={<PermissionProtectedRoute permission="settings:manage"><BusinessSettingsPage /></PermissionProtectedRoute>} />
+          <Route path="messages" element={<MessagesPage />} />
         </Route>
       </Route>
 

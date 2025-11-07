@@ -8,6 +8,9 @@ import LoginIcon from '@mui/icons-material/Login';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../api/axios';
 import TenantEditModal from '../components/TenantEditModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+import PasswordChangeModal from '../components/PasswordChangeModal';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const createModalStyle = {
   position: 'absolute',
@@ -21,22 +24,10 @@ const createModalStyle = {
   p: 4,
 };
 
-const Row = ({ tenant, handleOpenEditModal }) => {
-    const { startImpersonation } = useAuth();
+const Row = ({ tenant, handleOpenEditModal, handleImpersonate, handleOpenPasswordModal }) => {
     const [open, setOpen] = useState(false);
     const [users, setUsers] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
-
-    const handleImpersonate = async (userId, username) => {
-        if (window.confirm(`¿Seguro que quieres iniciar sesión como "${username}"? Tu sesión de Superadmin se guardará.`)) {
-            try {
-                const response = await apiClient.post(`/superadmin/impersonate/${userId}`);
-                startImpersonation(response.data.token);
-            } catch (error) {
-                alert('No se pudo iniciar la sesión de suplantación.');
-            }
-        }
-    };
 
     const fetchUsers = () => {
         if (!open) {
@@ -77,6 +68,9 @@ const Row = ({ tenant, handleOpenEditModal }) => {
                                                 <TableCell>{user.username}</TableCell>
                                                 <TableCell>{user.role}</TableCell>
                                                 <TableCell align="right">
+                                                    <IconButton title={`Cambiar contraseña para ${user.username}`} color="primary" onClick={() => handleOpenPasswordModal(user)}>
+                                                        <EditIcon />
+                                                    </IconButton>
                                                     <IconButton title={`Iniciar sesión como ${user.username}`} color="secondary" onClick={() => handleImpersonate(user.id, user.username)}>
                                                         <LoginIcon />
                                                     </IconButton>
@@ -95,6 +89,8 @@ const Row = ({ tenant, handleOpenEditModal }) => {
 }
 
 const SuperadminPage = () => {
+    const { showSnackbar } = useSnackbar();
+    const { startImpersonation } = useAuth();
     const [tenants, setTenants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -102,10 +98,14 @@ const SuperadminPage = () => {
     const [tenantToEdit, setTenantToEdit] = useState(null);
     const [newTenantData, setNewTenantData] = useState({ tenantName: '', subdomain: '', adminUsername: '', adminPassword: '' });
     const [saving, setSaving] = useState(false);
+    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+    const [impersonationData, setImpersonationData] = useState(null);
+    const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+    const [userToEditPassword, setUserToEditPassword] = useState(null);
 
     const fetchTenants = () => {
         setLoading(true);
-        apiClient.get('/tenants').then(res => setTenants(res.data)).catch(() => alert("No se pudieron cargar los negocios.")).finally(() => setLoading(false));
+        apiClient.get('/tenants').then(res => setTenants(res.data)).catch(() => showSnackbar("No se pudieron cargar los negocios.", "error")).finally(() => setLoading(false));
     };
 
     useEffect(() => { fetchTenants(); }, []);
@@ -115,8 +115,8 @@ const SuperadminPage = () => {
     const handleUpdateTenant = async (tenantId, formData) => {
         try {
             await apiClient.put(`/tenants/${tenantId}`, formData);
-            alert("Negocio actualizado."); setEditModalOpen(false); fetchTenants();
-        } catch (error) { alert(error.response?.data?.message || "Error al actualizar."); }
+            showSnackbar("Negocio actualizado.", "success"); setEditModalOpen(false); fetchTenants();
+        } catch (error) { showSnackbar(error.response?.data?.message || "Error al actualizar.", "error"); }
     };
 
     const handleNewTenantInputChange = (e) => { setNewTenantData({ ...newTenantData, [e.target.name]: e.target.value }); };
@@ -126,13 +126,47 @@ const SuperadminPage = () => {
         setSaving(true);
         try {
             await apiClient.post('/tenants', newTenantData);
-            alert("Nuevo negocio creado."); setCreateModalOpen(false);
+            showSnackbar("Nuevo negocio creado.", "success"); setCreateModalOpen(false);
             setNewTenantData({ tenantName: '', subdomain: '', adminUsername: '', adminPassword: '' }); 
             fetchTenants();
-        } catch (error) { 
-            alert(error.response?.data?.message || "Error al crear."); 
-        } finally { 
+                } catch (error) { showSnackbar(error.response?.data?.message || "Error al crear.", "error"); } finally { 
             setSaving(false); 
+        }
+    };
+
+    const handleImpersonate = (userId, username) => {
+        setImpersonationData({ userId, username });
+        setConfirmModalOpen(true);
+    };
+
+    const confirmImpersonation = async () => {
+        if (!impersonationData) return;
+        try {
+            const response = await apiClient.post(`/superadmin/impersonate/${impersonationData.userId}`);
+            startImpersonation(response.data.token);
+        } catch (error) {
+            showSnackbar('No se pudo iniciar la sesión de suplantación.', 'error');
+        } finally {
+            setConfirmModalOpen(false);
+            setImpersonationData(null);
+        }
+    };
+
+    const handleOpenPasswordModal = (user) => {
+        setUserToEditPassword(user);
+        setPasswordModalOpen(true);
+    };
+
+    const handleUpdateUserPassword = async (password) => {
+        if (!userToEditPassword) return;
+        try {
+            await apiClient.put(`/superadmin/users/${userToEditPassword.id}/password`, { password });
+            showSnackbar("Contraseña actualizada.", "success");
+        } catch (error) {
+            showSnackbar(error.response?.data?.message || "Error al actualizar la contraseña.", "error");
+        } finally {
+            setPasswordModalOpen(false);
+            setUserToEditPassword(null);
         }
     };
 
@@ -153,7 +187,7 @@ const SuperadminPage = () => {
                     </TableHead>
                     <TableBody>
                         {loading ? <TableRow><TableCell colSpan={7} align="center"><CircularProgress /></TableCell></TableRow>
-                        : (tenants.map(tenant => <Row key={tenant.id} tenant={tenant} handleOpenEditModal={handleOpenEditModal} />))}
+                        : (tenants.map(tenant => <Row key={tenant.id} tenant={tenant} handleOpenEditModal={handleOpenEditModal} handleImpersonate={handleImpersonate} handleOpenPasswordModal={handleOpenPasswordModal} />))}
                     </TableBody>
                 </Table>
             </TableContainer>
@@ -173,6 +207,23 @@ const SuperadminPage = () => {
             </Modal>
             
             {tenantToEdit && <TenantEditModal open={editModalOpen} onClose={() => setEditModalOpen(false)} tenant={tenantToEdit} onSave={handleUpdateTenant} />}
+
+            {userToEditPassword && (
+                <PasswordChangeModal
+                    open={passwordModalOpen}
+                    onClose={() => { setPasswordModalOpen(false); setUserToEditPassword(null); }}
+                    onSave={handleUpdateUserPassword}
+                    userName={userToEditPassword.username}
+                />
+            )}
+
+            <ConfirmationModal
+                open={confirmModalOpen}
+                onClose={() => setConfirmModalOpen(false)}
+                onConfirm={confirmImpersonation}
+                title="Confirmar Suplantación"
+                message={impersonationData ? `¿Seguro que quieres iniciar sesión como "${impersonationData.username}"? Tu sesión de Superadmin se guardará.` : ''}
+            />
         </Box>
     );
 };

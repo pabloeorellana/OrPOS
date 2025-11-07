@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, TextField, Button, Grid, CircularProgress, LinearProgress, Alert, Switch, FormControlLabel, Divider } from '@mui/material';
+import { Box, Paper, Typography, TextField, Button, Grid, CircularProgress, LinearProgress, Switch, FormControlLabel, Divider } from '@mui/material';
 import apiClient from '../api/axios';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const UsageBar = ({ current, max, label }) => {
     const percentage = max > 0 ? (current / max) * 100 : 0;
@@ -13,6 +14,7 @@ const UsageBar = ({ current, max, label }) => {
 };
 
 const BusinessSettingsPage = () => {
+    const { showSnackbar } = useSnackbar();
     const [businessData, setBusinessData] = useState(null);
     const [businessName, setBusinessName] = useState('');
     const [initialBusinessName, setInitialBusinessName] = useState('');
@@ -61,9 +63,9 @@ const BusinessSettingsPage = () => {
         try {
             await apiClient.put('/tenants/my-business', { name: businessName });
             setInitialBusinessName(businessName);
-            alert("Nombre del negocio actualizado.");
+            showSnackbar("Nombre del negocio actualizado.", "success");
         } catch (error) {
-            alert("No se pudo actualizar el nombre.");
+            showSnackbar("No se pudo actualizar el nombre.", "error");
         } finally {
             setSavingName(false);
         }
@@ -78,16 +80,16 @@ const BusinessSettingsPage = () => {
             ]);
             setInitialFee(tableServiceFee);
             setInitialEnable(enableTableService);
-            alert("Configuración del POS actualizada.");
+            showSnackbar("Configuración del POS actualizada.", "success");
         } catch (error) {
-            alert("No se pudo actualizar la configuración del POS.");
+            showSnackbar("No se pudo actualizar la configuración del POS.", "error");
         } finally {
             setSavingPos(false);
         }
     };
 
     if (loading) return <CircularProgress />;
-    if (error) return <Alert severity="error">{error}</Alert>;
+    if (error) return <Typography color="error">{error}</Typography>;
 
     const isNameChanged = businessName !== initialBusinessName;
     const arePosSettingsChanged = tableServiceFee !== initialFee || enableTableService !== initialEnable;

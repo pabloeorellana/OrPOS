@@ -17,16 +17,26 @@ router.post('/login', async (req, res) => {
     try {
         let user;
         
-        // Si no se proporciona tenantPath, es un login de Superadmin
+        // Si no se proporciona tenantPath, primero intentar login de Superadmin
         if (!tenantPath) {
-            const [users] = await db.query(
+            const [superadminUsers] = await db.query(
                 'SELECT u.*, r.name as role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ? AND u.tenant_id IS NULL',
                 [username]
             );
-            if (users.length === 0) {
-                return res.status(401).json({ message: 'Credenciales inválidas.' });
+
+            if (superadminUsers.length > 0) {
+                user = superadminUsers[0];
+            } else {
+                // Si no es Superadmin, intentar login de usuario de tenant sin tenantPath
+                const [tenantUsers] = await db.query(
+                    'SELECT u.*, r.name as role_name, t.status as tenant_status, t.subscription_ends_at FROM users u JOIN tenants t ON u.tenant_id = t.id LEFT JOIN roles r ON u.role_id = r.id WHERE u.username = ?',
+                    [username]
+                );
+                if (tenantUsers.length === 0) {
+                    return res.status(401).json({ message: 'Credenciales inválidas.' });
+                }
+                user = tenantUsers[0];
             }
-            user = users[0];
         } else {
             // Login para un tenant específico, usando 'subdomain' (que usamos como path)
             const query = `
@@ -66,12 +76,14 @@ router.post('/login', async (req, res) => {
         
         let payload;
         if (user.tenant_id === null) {
+            // Superadmin login
             payload = { id: user.id, username: user.username, isSuperAdmin: true, role: 'superadmin', permissions };
         } else {
+            // Tenant user login
             payload = {
                 id: user.id,
                 username: user.username,
-                tenantId: user.tenant_id,
+                tenantId: user.tenant_id, // Always include tenantId for tenant users
                 role: user.role_name,
                 isSuperAdmin: false,
                 permissions

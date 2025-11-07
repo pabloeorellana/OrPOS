@@ -6,12 +6,17 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import apiClient from '../api/axios';
 import PlanModal from '../components/PlanModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const PlansPage = () => {
+    const { showSnackbar } = useSnackbar();
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [planToEdit, setPlanToEdit] = useState(null);
+    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+    const [planToDelete, setPlanToDelete] = useState(null);
 
     const fetchPlans = async () => {
         setLoading(true);
@@ -19,7 +24,7 @@ const PlansPage = () => {
             const response = await apiClient.get('/plans');
             setPlans(response.data);
         } catch (error) {
-            alert("No se pudieron cargar los planes.");
+            showSnackbar("No se pudieron cargar los planes.", "error");
         } finally {
             setLoading(false);
         }
@@ -39,20 +44,26 @@ const PlansPage = () => {
             }
             fetchPlans();
         } catch (error) {
-            alert("Error al guardar el plan.");
+            showSnackbar("Error al guardar el plan.", "error");
         } finally {
             handleCloseModal();
         }
     };
 
-    const handleDeletePlan = async (planId) => {
-        if (window.confirm('¿Seguro que quieres eliminar este plan? Solo podrás hacerlo si ningún negocio lo está usando.')) {
-            try {
-                await apiClient.delete(`/plans/${planId}`);
-                fetchPlans();
-            } catch (error) {
-                alert(error.response?.data?.message || "Error al eliminar el plan.");
-            }
+    const handleDeletePlan = (planId) => {
+        setPlanToDelete(planId);
+        setConfirmModalOpen(true);
+    };
+
+    const confirmDeletePlan = async () => {
+        try {
+            await apiClient.delete(`/plans/${planToDelete}`);
+            fetchPlans();
+        } catch (error) {
+            showSnackbar(error.response?.data?.message || "Error al eliminar el plan.", "error");
+        } finally {
+            setConfirmModalOpen(false);
+            setPlanToDelete(null);
         }
     };
 
@@ -96,6 +107,13 @@ const PlansPage = () => {
                 onClose={handleCloseModal}
                 onSave={handleSavePlan}
                 plan={planToEdit}
+            />
+            <ConfirmationModal
+                open={confirmModalOpen}
+                onClose={() => setConfirmModalOpen(false)}
+                onConfirm={confirmDeletePlan}
+                title="Confirmar Eliminación"
+                message="¿Seguro que quieres eliminar este plan? Solo podrás hacerlo si ningún negocio lo está usando."
             />
         </Box>
     );

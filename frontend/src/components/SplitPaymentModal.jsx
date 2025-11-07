@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Box, Typography, TextField, Button, Grid, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const SplitPaymentModal = ({ open, onClose, total, onConfirm }) => {
+    const { showSnackbar } = useSnackbar();
     const [payment1, setPayment1] = useState({ method: 'Efectivo', amount: '' });
     const [payment2, setPayment2] = useState({ method: 'Tarjeta', amount: '' });
     const [remaining, setRemaining] = useState(total);
@@ -17,7 +19,7 @@ const SplitPaymentModal = ({ open, onClose, total, onConfirm }) => {
         const amount1 = parseFloat(payment1.amount) || 0;
         const amount2 = parseFloat(payment2.amount) || 0;
         if (amount1 + amount2 !== total) {
-            alert('El monto total no coincide.');
+            showSnackbar('El monto total no coincide.', 'error');
             return;
         }
         onConfirm([

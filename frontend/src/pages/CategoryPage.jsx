@@ -6,12 +6,17 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import apiClient from '../api/axios';
 import CategoryModal from '../components/CategoryModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const CategoryPage = () => {
+    const { showSnackbar } = useSnackbar();
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [categoryToEdit, setCategoryToEdit] = useState(null);
+    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+    const [categoryToDelete, setCategoryToDelete] = useState(null);
 
     const fetchCategories = async () => {
         setLoading(true);
@@ -20,7 +25,7 @@ const CategoryPage = () => {
             setCategories(response.data);
         } catch (error) {
             console.error("Error al cargar las categorías:", error);
-            if (error.response?.status === 403) alert("No tienes permiso para ver esta sección.");
+            if (error.response?.status === 403) showSnackbar("No tienes permiso para ver esta sección.", "error");
         } finally {
             setLoading(false);
         }
@@ -40,20 +45,26 @@ const CategoryPage = () => {
             }
             fetchCategories();
         } catch (error) {
-            alert("Error al guardar la categoría.");
+            showSnackbar("Error al guardar la categoría.", "error");
         } finally {
             handleCloseModal();
         }
     };
 
-    const handleDeleteCategory = async (categoryId) => {
-        if (window.confirm('¿Seguro que quieres eliminar esta categoría?')) {
-            try {
-                await apiClient.delete(`/categories/${categoryId}`);
-                fetchCategories();
-            } catch (error) {
-                alert("Error al eliminar la categoría.");
-            }
+    const handleDeleteCategory = (categoryId) => {
+        setCategoryToDelete(categoryId);
+        setConfirmModalOpen(true);
+    };
+
+    const confirmDeleteCategory = async () => {
+        try {
+            await apiClient.delete(`/categories/${categoryToDelete}`);
+            fetchCategories();
+        } catch (error) {
+            showSnackbar("Error al eliminar la categoría.", "error");
+        } finally {
+            setConfirmModalOpen(false);
+            setCategoryToDelete(null);
         }
     };
     
@@ -96,7 +107,7 @@ const CategoryPage = () => {
                     Nueva Categoría
                 </Button>
             </Box>
-            <Paper sx={{ height: 600, width: 'public_html' }}>
+            <Paper sx={{ height: 600, width: '100%' }}>
                 <DataGrid
                     rows={categories}
                     columns={columns}
@@ -109,6 +120,13 @@ const CategoryPage = () => {
                 onClose={handleCloseModal}
                 onSave={handleSaveCategory}
                 category={categoryToEdit}
+            />
+            <ConfirmationModal
+                open={confirmModalOpen}
+                onClose={() => setConfirmModalOpen(false)}
+                onConfirm={confirmDeleteCategory}
+                title="Confirmar Eliminación"
+                message="¿Seguro que quieres eliminar esta categoría?"
             />
         </Box>
     );

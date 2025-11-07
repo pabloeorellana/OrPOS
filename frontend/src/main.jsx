@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { SnackbarProvider } from './context/SnackbarContext.jsx';
 import { ThemeProvider } from '@mui/material/styles';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -30,14 +31,16 @@ try {
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <ThemeProvider theme={theme}>
-         <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
-            <CssBaseline />
-            <App />
-          </LocalizationProvider>
-        </ThemeProvider>
-      </AuthProvider>
+      <SnackbarProvider>
+        <AuthProvider>
+          <ThemeProvider theme={theme}>
+           <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+              <CssBaseline />
+              <App />
+            </LocalizationProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </SnackbarProvider>
     </BrowserRouter>
   </React.StrictMode>,
 );

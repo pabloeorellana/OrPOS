@@ -3,15 +3,26 @@ import { Box, Typography, Button, Paper, IconButton, Chip } from '@mui/material'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import VpnKeyIcon from '@mui/icons-material/VpnKey'; // Import new icon
 import apiClient from '../api/axios';
 import UserModal from '../components/UserModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+import PasswordChangeModal from '../components/PasswordChangeModal'; // Import PasswordChangeModal
+import { useSnackbar } from '../context/SnackbarContext';
 
 const UserPage = () => {
+    const { showSnackbar } = useSnackbar();
     const [users, setUsers] = useState([]);
     const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
-    
+    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+    const [userToDelete, setUserToDelete] = useState(null);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [passwordModalOpen, setPasswordModalOpen] = useState(false); // New state for password modal
+    const [userToEditPassword, setUserToEditPassword] = useState(null); // New state for user whose password is being edited
+
     // Unificamos la carga de datos en una sola función asíncrona
     const fetchData = async () => {
         setLoading(true);
@@ -27,9 +38,9 @@ const UserPage = () => {
             console.error("Error al cargar los datos de la página de usuarios:", error);
             // Mostrar una alerta si falla alguna de las llamadas
             if (error.response?.status === 403) {
-                alert("No tienes permiso para ver esta sección.");
+                showSnackbar("No tienes permiso para ver esta sección.", "error");
             } else {
-                alert("No se pudieron cargar los datos necesarios.");
+                showSnackbar("No se pudieron cargar los datos necesarios.", "error");
             }
         } finally {
             setLoading(false);
@@ -40,25 +51,61 @@ const UserPage = () => {
         fetchData();
     }, []);
 
-    const handleSaveUser = async (formData) => {
+    const handleSaveUser = async (formData, userId) => {
         try {
-            await apiClient.post('/users', formData);
-            fetchData(); // Volvemos a llamar a la función unificada para recargar todo
+            if (userId) {
+                await apiClient.put(`/users/${userId}`, formData);
+            } else {
+                await apiClient.post('/users', formData);
+            }
+            fetchData();
         } catch (error) {
-            alert(error.response?.data?.message || "Error al guardar el usuario.");
+            showSnackbar(error.response?.data?.message || "Error al guardar el usuario.", "error");
         } finally {
             setModalOpen(false);
+            setCurrentUser(null);
         }
     };
 
-    const handleDeleteUser = async (userId) => {
-        if (window.confirm('¿Seguro que quieres eliminar este usuario? Las ventas y turnos asociados se conservarán pero quedarán desvinculados.')) {
-            try {
-                await apiClient.delete(`/users/${userId}`);
-                fetchData(); // Recargar todo
-            } catch (error) {
-                alert(error.response?.data?.message || "Error al eliminar.");
-            }
+    const handleEditUser = (user) => {
+        setCurrentUser(user);
+        setModalOpen(true);
+    };
+
+    const handleDeleteUser = (userId) => {
+        setUserToDelete(userId);
+        setConfirmModalOpen(true);
+    };
+
+    const confirmDeleteUser = async () => {
+        try {
+            await apiClient.delete(`/users/${userToDelete}`);
+            fetchData(); // Recargar todo
+        } catch (error) {
+            showSnackbar(error.response?.data?.message || "Error al eliminar.", "error");
+        } finally {
+            setConfirmModalOpen(false);
+            setUserToDelete(null);
+        }
+    };
+
+    // New functions for password change
+    const handleOpenPasswordModal = (user) => {
+        setUserToEditPassword(user);
+        setPasswordModalOpen(true);
+    };
+
+    const handleUpdateUserPassword = async (password) => {
+        if (!userToEditPassword) return;
+        try {
+            // The backend route for tenant admin to change other user's password
+            await apiClient.put(`/users/${userToEditPassword.id}`, { password });
+            showSnackbar("Contraseña actualizada.", "success");
+        } catch (error) {
+            showSnackbar(error.response?.data?.message || "Error al actualizar la contraseña.", "error");
+        } finally {
+            setPasswordModalOpen(false);
+            setUserToEditPassword(null);
         }
     };
 
@@ -69,12 +116,20 @@ const UserPage = () => {
         {
             field: 'actions',
             headerName: 'Acciones',
-            width: 150,
+            width: 180, // Increased width to accommodate new icon
             sortable: false,
             renderCell: (p) => (
-                <IconButton onClick={() => handleDeleteUser(p.row.id)} color="error">
-                    <DeleteIcon />
-                </IconButton>
+                <Box>
+                    <IconButton onClick={() => handleEditUser(p.row)} color="primary">
+                        <EditIcon />
+                    </IconButton>
+                    <IconButton onClick={() => handleOpenPasswordModal(p.row)} color="info" title="Cambiar Contraseña"> {/* New password change button */}
+                        <VpnKeyIcon />
+                    </IconButton>
+                    <IconButton onClick={() => handleDeleteUser(p.row.id)} color="error">
+                        <DeleteIcon />
+                    </IconButton>
+                </Box>
             )
         },
     ];
@@ -84,7 +139,7 @@ const UserPage = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h4">Gestión de Usuarios</Typography>
                 {/* Deshabilitar el botón si los roles aún no se han cargado */}
-                <Button variant="contained" startIcon={<AddIcon />} onClick={() => setModalOpen(true)} disabled={loading || roles.length === 0}>
+                <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setCurrentUser(null); setModalOpen(true); }} disabled={loading || roles.length === 0}>
                     Nuevo Usuario
                 </Button>
             </Box>
@@ -99,10 +154,26 @@ const UserPage = () => {
             </Paper>
             <UserModal 
                 open={modalOpen} 
-                onClose={() => setModalOpen(false)} 
+                onClose={() => { setModalOpen(false); setCurrentUser(null); }}
                 onSave={handleSaveUser}
                 roles={roles} // Pasamos los roles que ya están cargados y listos
+                currentUser={currentUser}
             />
+            <ConfirmationModal
+                open={confirmModalOpen}
+                onClose={() => setConfirmModalOpen(false)}
+                onConfirm={confirmDeleteUser}
+                title="Confirmar Eliminación"
+                message="¿Seguro que quieres eliminar este usuario? Las ventas y turnos asociados se conservarán pero quedarán desvinculados."
+            />
+            {userToEditPassword && (
+                <PasswordChangeModal
+                    open={passwordModalOpen}
+                    onClose={() => { setPasswordModalOpen(false); setUserToEditPassword(null); }}
+                    onSave={handleUpdateUserPassword}
+                    userName={userToEditPassword.username}
+                />
+            )}
         </Box>
     );
 };

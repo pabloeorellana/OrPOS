@@ -25,6 +25,7 @@ const returnRoutes = require('./routes/returnRoutes');
 const permissionsRoutes = require('./routes/permissionsRoutes');
 const superadminRoutes = require('./routes/superadminRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const messageRoutes = require('./routes/messageRoutes');
 
 const app = express();
 
@@ -88,6 +89,7 @@ apiRouter.use('/settings', settingsRoutes);
 apiRouter.use('/audit', auditRoutes);
 apiRouter.use('/returns', returnRoutes);
 apiRouter.use('/payments', paymentRoutes);
+apiRouter.use('/messages', messageRoutes);
 
 /* --- MANEJO DE ERRORES GLOBAL --- */
 app.use((err, req, res, next) => {

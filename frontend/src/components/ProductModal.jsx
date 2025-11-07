@@ -3,6 +3,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { Modal, Box, Typography, TextField, Button, Grid, MenuItem, CircularProgress, Divider, RadioGroup, FormControlLabel, Radio, FormLabel, FormControl } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import apiClient from '../api/axios';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const style = {
   position: 'absolute',
@@ -26,6 +27,7 @@ const ProductModal = ({ open, onClose, onSave, product }) => {
     });
     const [categories, setCategories] = useState([]);
     const [isFetching, setIsFetching] = useState(false);
+    const { showSnackbar } = useSnackbar();
     
     const barcodeValue = watch('barcode');
     const saleTypeValue = watch('sale_type');
@@ -37,7 +39,6 @@ const ProductModal = ({ open, onClose, onSave, product }) => {
                 // 2. Cuando las categorías llegan, las guardamos en el estado
                 setCategories(res.data);
                 
-                // 3. AHORA, con las categorías ya disponibles, reseteamos el formulario
                 //    con los datos del producto, asegurando que todos los campos tengan un valor por defecto.
                 reset({
                     name: product?.name || '',
@@ -63,12 +64,12 @@ const ProductModal = ({ open, onClose, onSave, product }) => {
                 if (name) setValue('name', name);
                 if (image_url) setValue('image_url', image_url);
             } catch (error) {
-                alert("Producto no encontrado en la base de datos externa.");
+                showSnackbar("Producto no encontrado en la base de datos externa.", "error");
             } finally {
                 setIsFetching(false);
             }
         } else {
-            alert("Por favor, ingresa un código de barras válido.");
+            showSnackbar("Por favor, ingresa un código de barras válido.", "warning");
         }
     };
 

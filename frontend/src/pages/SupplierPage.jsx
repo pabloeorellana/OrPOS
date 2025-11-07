@@ -6,12 +6,17 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import apiClient from '../api/axios'; // <-- Corregido
 import SupplierModal from '../components/SupplierModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const SupplierPage = () => {
+    const { showSnackbar } = useSnackbar();
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [supplierToEdit, setSupplierToEdit] = useState(null);
+    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+    const [supplierToDelete, setSupplierToDelete] = useState(null);
 
     const fetchSuppliers = async () => {
         setLoading(true);
@@ -19,7 +24,7 @@ const SupplierPage = () => {
             const response = await apiClient.get('/suppliers'); // <-- Corregido
             setSuppliers(response.data);
         } catch (error) {
-            if (error.response?.status === 403) alert("No tienes permiso para ver los proveedores.");
+            if (error.response?.status === 403) showSnackbar("No tienes permiso para ver los proveedores.", "error");
         } finally {
             setLoading(false);
         }
@@ -35,16 +40,23 @@ const SupplierPage = () => {
             if (id) await apiClient.put(`/suppliers/${id}`, formData); // <-- Corregido
             else await apiClient.post('/suppliers', formData); // <-- Corregido
             fetchSuppliers();
-        } catch (error) { alert("Error al guardar."); }
+        } catch (error) { showSnackbar("Error al guardar.", "error"); }
         finally { handleCloseModal(); }
     };
 
-    const handleDeleteSupplier = async (id) => {
-        if (window.confirm('¿Seguro?')) {
-            try {
-                await apiClient.delete(`/suppliers/${id}`); // <-- Corregido
-                fetchSuppliers();
-            } catch (error) { alert("Error al eliminar."); }
+    const handleDeleteSupplier = (id) => {
+        setSupplierToDelete(id);
+        setConfirmModalOpen(true);
+    };
+
+    const confirmDeleteSupplier = async () => {
+        try {
+            await apiClient.delete(`/suppliers/${supplierToDelete}`); // <-- Corregido
+            fetchSuppliers();
+        } catch (error) { showSnackbar("Error al eliminar.", "error"); }
+        finally {
+            setConfirmModalOpen(false);
+            setSupplierToDelete(null);
         }
     };
     
@@ -63,6 +75,13 @@ const SupplierPage = () => {
             </Box>
             <Paper sx={{ height: 600, width: '100%' }}><DataGrid rows={suppliers} columns={columns} loading={loading} pageSize={10} rowsPerPageOptions={[5, 10, 20]} components={{ Toolbar: GridToolbar }} /></Paper>
             <SupplierModal open={modalOpen} onClose={handleCloseModal} onSave={handleSaveSupplier} supplier={supplierToEdit} />
+            <ConfirmationModal
+                open={confirmModalOpen}
+                onClose={() => setConfirmModalOpen(false)}
+                onConfirm={confirmDeleteSupplier}
+                title="Confirmar Eliminación"
+                message="¿Seguro que quieres eliminar este proveedor?"
+            />
         </Box>
     );
 };

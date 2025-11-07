@@ -4,10 +4,12 @@ import { Box, Paper, Typography, Autocomplete, TextField, Button, Table, TableBo
 import { createFilterOptions } from '@mui/material/Autocomplete';
 import DeleteIcon from '@mui/icons-material/Delete';
 import apiClient from '../api/axios';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const filter = createFilterOptions();
 
 const NewPurchasePage = () => {
+    const { showSnackbar } = useSnackbar();
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
     const [selectedSupplier, setSelectedSupplier] = useState(null);
@@ -36,7 +38,7 @@ const NewPurchasePage = () => {
 
     const handleAddProduct = async () => {
         if (!selectedProduct) {
-            alert("Por favor, selecciona o crea un producto.");
+            showSnackbar("Por favor, selecciona o crea un producto.", "warning");
             return;
         }
         let productToAdd = selectedProduct;
@@ -48,13 +50,13 @@ const NewPurchasePage = () => {
                 productToAdd = response.data;
                 fetchProducts();
             } catch (error) {
-                alert("No se pudo crear el nuevo producto.");
+                showSnackbar("No se pudo crear el nuevo producto.", "error");
                 return;
             }
         }
 
         if (purchaseItems.some(item => item.id === productToAdd.id)) {
-            alert("El producto ya está en la lista.");
+            showSnackbar("El producto ya está en la lista.", "warning");
             return;
         }
 
@@ -81,7 +83,7 @@ const NewPurchasePage = () => {
     // La conversión se hace aquí, al momento de guardar
     const handleSavePurchase = async () => {
         if (purchaseItems.length === 0) {
-            alert("Añade al menos un producto a la compra.");
+            showSnackbar("Añade al menos un producto a la compra.", "warning");
             return;
         }
         const purchaseData = {
@@ -95,13 +97,13 @@ const NewPurchasePage = () => {
         };
         try {
             await apiClient.post('/purchases', purchaseData);
-            alert("Compra registrada exitosamente!");
+            showSnackbar("Compra registrada exitosamente!", "success");
             {
                 const tenant = (window.location.pathname.split('/').filter(Boolean)[0]) || null;
                 navigate(tenant ? `/${tenant}/purchases` : '/purchases');
             }
         } catch (error) {
-            alert("Hubo un error al registrar la compra.");
+            showSnackbar("Hubo un error al registrar la compra.", "error");
         }
     };
 

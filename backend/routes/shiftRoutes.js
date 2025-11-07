@@ -50,8 +50,8 @@ router.post('/start', async (req, res) => {
     }
     try {
         const [result] = await db.query(
-            'INSERT INTO shifts (user_id, opening_balance, opening_virtual_balance, tenant_id) VALUES (?, ?, ?, ?)',
-            [userId, openingBalance, openingVirtualBalance, tenantId]
+            'INSERT INTO shifts (user_id, opening_balance, opening_virtual_balance, total_cash_payments, total_virtual_payments, tenant_id) VALUES (?, ?, ?, ?, ?, ?)',
+            [userId, openingBalance, openingVirtualBalance, 0, 0, tenantId]
         );
         await logAction(req.user.id, 'SHIFT_START', req.user.tenantId, { 
             shiftId: result.insertId, 

@@ -72,4 +72,86 @@ router.delete('/:id', hasPermission('users:manage'), async (req, res) => {
         res.status(500).json({ message: "Error al eliminar el usuario." });
     }
 });
+
+router.put('/:id', hasPermission('users:manage'), async (req, res) => {
+    const { id } = req.params;
+    const { role_id, password } = req.body;
+    const tenantId = req.user.tenantId;
+
+    if (req.user.id === parseInt(id)) {
+        return res.status(400).json({ message: "No puedes editar tu propia cuenta desde aquí." });
+    }
+
+    try {
+        let query = 'UPDATE users SET';
+        const params = [];
+
+        if (role_id) {
+            query += ' role_id = ?';
+            params.push(role_id);
+        }
+
+        if (password) {
+            const hashedPassword = await bcrypt.hash(password, saltRounds);
+            if (params.length > 0) query += ',';
+            query += ' password = ?';
+            params.push(hashedPassword);
+        }
+
+        if (params.length === 0) {
+            return res.status(400).json({ message: "No hay datos para actualizar." });
+        }
+
+        query += ' WHERE id = ? AND tenant_id = ?';
+        params.push(id, tenantId);
+
+        const [result] = await db.query(query, params);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Usuario no encontrado." });
+        }
+
+        await logAction(req.user.id, 'USER_UPDATE', req.user.tenantId, { updatedUserId: id, changes: req.body });
+
+        res.status(200).json({ message: "Usuario actualizado correctamente." });
+    } catch (error) {
+        res.status(500).json({ message: "Error al actualizar el usuario." });
+    }
+});
+
+// New route for a user to change their own password
+router.put('/change-password', async (req, res) => {
+    const userId = req.user.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "La contraseña actual y la nueva contraseña son requeridas." });
+    }
+
+    try {
+        // Verify current password
+        const [users] = await db.query('SELECT password FROM users WHERE id = ?', [userId]);
+        if (users.length === 0) {
+            return res.status(404).json({ message: "Usuario no encontrado." });
+        }
+
+        const user = users[0];
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ message: "La contraseña actual es incorrecta." });
+        }
+
+        // Hash new password and update
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+        await db.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, userId]);
+        
+        await logAction(userId, 'PASSWORD_CHANGE', req.user.tenantId, { changedUserId: userId });
+        res.status(200).json({ message: "Contraseña actualizada correctamente." });
+
+    } catch (error) {
+        console.error("Error al cambiar la contraseña del usuario:", error);
+        res.status(500).json({ message: "Error al cambiar la contraseña." });
+    }
+});
+
 module.exports = router;

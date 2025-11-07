@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Grid, Paper, TextField, Typography, List, ListItem, ListItemText, IconButton, Box, Button, Divider, Avatar, Chip, Switch, FormControlLabel } from '@mui/material';
+import { Grid, Paper, TextField, Typography, List, ListItem, ListItemText, IconButton, Box, Button, Divider, Avatar, Chip, Switch, FormControlLabel, Skeleton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
 import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket';
@@ -12,7 +12,9 @@ import apiClient from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useLocation } from 'react-router-dom';
 import WeightInputModal from '../components/WeightInputModal';
+import OpenShiftModal from '../components/OpenShiftModal';
 import SplitPaymentModal from '../components/SplitPaymentModal';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const ProductCard = ({ product, onAdd }) => {
     const hasStock = product.stock > 0;
@@ -41,6 +43,7 @@ const ProductCard = ({ product, onAdd }) => {
 };
 
 const POSPage = () => {
+    const { showSnackbar } = useSnackbar();
     const [cart, setCart] = useState([]);
     const [subtotal, setSubtotal] = useState(0);
     const [total, setTotal] = useState(0);
@@ -54,12 +57,18 @@ const POSPage = () => {
     const [isWeightModalOpen, setWeightModalOpen] = useState(false);
     const [productToWeigh, setProductToWeigh] = useState(null);
     const [isSplitPaymentModalOpen, setSplitPaymentModalOpen] = useState(false);
+    const [isPosLoading, setPosLoading] = useState(false);
     const barcodeInputRef = useRef(null);
-    const { user, activeShift } = useAuth();
+    const { user, activeShift, isAuthLoading, shiftLoading } = useAuth();
     const location = useLocation();
-    
+    const [isOpenShiftModalOpen, setOpenShiftModalOpen] = useState(false);
+
+    // Hooks / effects must be declared unconditionally and in the same order
+    // Guard the inner logic so effects only run when appropriate (e.g. cuando hay turno activo)
     useEffect(() => {
         const fetchInitialData = async () => {
+            if (isAuthLoading || !activeShift) return;
+            setPosLoading(true);
             try {
                 const [productsRes, feeRes, enableRes] = await Promise.all([
                     apiClient.get('/products'),
@@ -71,9 +80,10 @@ const POSPage = () => {
                 setTableServiceFee(parseFloat(feeRes.data.value) || 0);
                 setTableServiceEnabled(enableRes.data.value === '1');
             } catch (error) { console.error("Error al cargar datos iniciales:", error); }
+            finally { setPosLoading(false); }
         };
         fetchInitialData();
-    }, [location.pathname]);
+    }, [location.pathname, isAuthLoading, activeShift]);
 
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -97,8 +107,46 @@ const POSPage = () => {
         if (cart.length === 0) { setShowPaymentOptions(false); setApplyTableService(false); }
     }, [cart]);
 
+    // Limpieza: removidos logs y overlay de depuración.
+
+    if (isAuthLoading) {
+        return <Typography variant="h5" sx={{ textAlign: 'center', mt: 4 }}>Cargando...</Typography>;
+    }
+
+    const tenant = window.location.pathname.split('/').filter(Boolean)[0];
+    const isTenantContext = tenant && tenant !== 'pos' && tenant !== 'login';
+
+    // Si no hay turno, no duplicamos el aviso (ShiftHandler ya muestra el prompt global)
+    if (!activeShift) {
+        return null;
+    }
+
+    if (isPosLoading) {
+        return (
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, height: { md: 'calc(100vh - 112px)' } }}>
+                <Paper sx={{ width: { xs: '100%', md: '60%' }, p: 2 }}>
+                    <Skeleton variant="rectangular" height={56} />
+                    <Box sx={{ mt: 2 }}>
+                        {[...Array(8)].map((_, i) => (
+                            <Skeleton key={i} variant="rounded" height={76} sx={{ mb: 1.5 }} />
+                        ))}
+                    </Box>
+                </Paper>
+                <Paper sx={{ width: { xs: '100%', md: '40%' }, p: 2 }}>
+                    <Skeleton variant="text" height={32} width="30%" />
+                    <Box sx={{ mt: 2 }}>
+                        {[...Array(5)].map((_, i) => (
+                            <Skeleton key={i} variant="rounded" height={36} sx={{ mb: 1 }} />
+                        ))}
+                    </Box>
+                    <Skeleton variant="rounded" height={56} />
+                </Paper>
+            </Box>
+        );
+    }
+
     const addProductToCart = (product) => {
-        if (product.stock <= 0) { alert(`El producto "${product.name}" no tiene stock.`); return; }
+        if (product.stock <= 0) { showSnackbar(`El producto "${product.name}" no tiene stock.`, "warning"); return; }
 
         if (product.sale_type === 'peso') {
             setProductToWeigh(product);
@@ -107,7 +155,7 @@ const POSPage = () => {
         }
 
         const itemInCart = cart.find(item => item.product_id === product.id && !item.isWeighted);
-        if (itemInCart && itemInCart.quantity >= product.stock) { alert(`No puedes añadir más de "${product.name}".`); return; }
+        if (itemInCart && itemInCart.quantity >= product.stock) { showSnackbar(`No puedes añadir más de "${product.name}".`, "warning"); return; }
 
         if (itemInCart) {
             updateCartQuantity(itemInCart.id, itemInCart.quantity + 1);
@@ -130,7 +178,7 @@ const POSPage = () => {
     const handleWeightConfirm = (weight) => {
         const product = productToWeigh;
         if (weight > product.stock) {
-            alert(`Stock insuficiente. Stock actual: ${product.stock} Kg.`);
+            showSnackbar(`Stock insuficiente. Stock actual: ${product.stock} Kg.`, "warning");
             return;
         }
         const finalPrice = parseFloat(product.price) * weight;
@@ -186,12 +234,12 @@ const POSPage = () => {
 
         try {
             await apiClient.post('/sales', saleData);
-            alert(`Venta registrada!`);
+            showSnackbar(`Venta registrada!`, "success");
             setCart([]);
             setShowPaymentOptions(false);
             setSplitPaymentModalOpen(false);
         } catch (error) {
-            alert(error.response?.data?.message || "Error al registrar la venta.");
+            showSnackbar(error.response?.data?.message || "Error al registrar la venta.", "error");
         }
     };
     return (

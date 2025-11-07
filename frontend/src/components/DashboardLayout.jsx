@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { AppBar, Toolbar, Typography, Button, Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, CssBaseline, Divider, Alert, AlertTitle, useTheme, useMediaQuery, IconButton } from '@mui/material';
-import { Outlet, Link } from 'react-router-dom';
+import { AppBar, Toolbar, Typography, Button, Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, CssBaseline, Divider, useTheme, useMediaQuery, IconButton, Badge } from '@mui/material';
+import { Outlet, Link, useNavigate } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
@@ -16,12 +16,16 @@ import CategoryIcon from '@mui/icons-material/Category';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AssessmentIcon from '@mui/icons-material/Assessment';
+import ChatIcon from '@mui/icons-material/Chat';
 import SecurityIcon from '@mui/icons-material/Security';
 import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import GavelIcon from '@mui/icons-material/Gavel';
 import { getTenantFromPath } from '../utils/tenantHelper';
+import { useSnackbar } from '../context/SnackbarContext';
+
+import apiClient from '../api/axios'; // <-- NECESARIO para pedir shift de nuevo
 
 const drawerWidth = 240;
 
@@ -40,16 +44,21 @@ const allMenuItems = [
     { text: 'Configuración General', icon: <SettingsIcon />, path: '/settings', permission: 'settings:manage' },
     { text: 'Auditoría', icon: <PolicyIcon />, path: '/audit', permission: 'audit:view' },
     { text: 'Reportes', icon: <AssessmentIcon />, path: '/reports', permission: 'reports:view' },
+    { text: 'Mensajes', icon: <ChatIcon />, path: '/messages', permission: ['dashboard:view', 'pos:use'] },
     { text: 'Permisos', icon: <SecurityIcon />, path: '/permissions', permission: 'users:manage' }
 ];
 
 const DashboardLayout = () => {
-    const { user, logout, activeShift, isImpersonating, exitImpersonation } = useAuth();
+
+    const { user, logout, activeShift, isImpersonating, exitImpersonation, setActiveShift, unreadMessagesCount } = useAuth();
+
     const [closeModalOpen, setCloseModalOpen] = useState(false);
     const [visibleMenuItems, setVisibleMenuItems] = useState([]);
     const [mobileOpen, setMobileOpen] = useState(false);
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const { showSnackbar } = useSnackbar();
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (!user) { setVisibleMenuItems([]); return; }
@@ -80,6 +89,19 @@ const DashboardLayout = () => {
         setMobileOpen(!mobileOpen);
     };
 
+    const handleShiftClosed = async () => {
+        setCloseModalOpen(false);
+
+        try {
+            const { data } = await apiClient.get(`/shifts/current/${user.id}`);
+            setActiveShift(data);
+        } catch (error) {
+            setActiveShift(null);
+        }
+
+        navigate('/pos');
+    };
+
     const tenant = getTenantFromPath();
     const base = user?.isSuperAdmin ? '' : (tenant ? `/${tenant}` : '');
 
@@ -87,10 +109,6 @@ const DashboardLayout = () => {
         <div>
             <Toolbar sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
                 <img src="/orposlogo.png" alt="OrPOS Logo" style={{ height: '40px' }} />
-                {/* 
-                En el futuro, podrías reemplazar Typography con un logo:
-                <img src="/path/to/logo.svg" alt="OrPOS Logo" style={{ height: '40px' }} />
-                */}
             </Toolbar>
             <Divider />
             <List>
@@ -130,11 +148,20 @@ const DashboardLayout = () => {
 
                     {!user?.isSuperAdmin && (
                         <>
-                            <Typography variant="subtitle2" sx={{ mr: 2, border: '1px solid white', borderRadius: 1, px: 1, py: 0.5, display: { xs: 'none', md: 'block' } }}>
-                                Caja Abierta: ${activeShift?.opening_balance ? parseFloat(activeShift.opening_balance).toFixed(2) : '0.00'}
-                            </Typography>
+                            <IconButton color="inherit" component={Link} to={`${base}/messages`} sx={{ mr: 1 }}>
+                                <Badge color="error" badgeContent={unreadMessagesCount || 0} max={99}>
+                                    <ChatIcon />
+                                </Badge>
+                            </IconButton>
+                            {activeShift && (
+                                <Typography variant="subtitle2" sx={{ mr: 2, border: '1px solid white', borderRadius: 1, px: 1, py: 0.5, display: { xs: 'none', md: 'block' } }}>
+                                    Caja Abierta (Monto Inicial): ${activeShift?.opening_balance ? parseFloat(activeShift.opening_balance).toFixed(2) : '0.00'}
+                                </Typography>
+                            )}
                             <Typography variant="subtitle1" sx={{ mr: 2, display: { xs: 'none', md: 'block' } }}>Hola, {user ? user.username : 'Invitado'}</Typography>
-                            <Button color="inherit" onClick={() => setCloseModalOpen(true)} sx={{ display: { xs: 'none', md: 'block' } }}>Cerrar Caja</Button>
+                            {activeShift && (
+                                <Button color="inherit" onClick={() => setCloseModalOpen(true)} sx={{ display: { xs: 'none', md: 'block' } }}>Cerrar Caja</Button>
+                            )}
                         </>
                     )}
                     <Button color="inherit" onClick={logout} sx={{ ml: 1 }}>Cerrar Sesión</Button>
@@ -145,13 +172,12 @@ const DashboardLayout = () => {
                 sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
                 aria-label="mailbox folders"
             >
-                {/* Temporary Drawer for Mobile */}
                 <Drawer
                     variant="temporary"
                     open={mobileOpen}
                     onClose={handleDrawerToggle}
                     ModalProps={{
-                        keepMounted: true, // Better open performance on mobile.
+                        keepMounted: true,
                     }}
                     sx={{
                         display: { xs: 'block', sm: 'none' },
@@ -160,7 +186,6 @@ const DashboardLayout = () => {
                 >
                     {drawerContent}
                 </Drawer>
-                {/* Permanent Drawer for Desktop */}
                 <Drawer
                     variant="permanent"
                     sx={{
@@ -178,18 +203,34 @@ const DashboardLayout = () => {
             >
                 <Toolbar />
                 {isImpersonating && (
-                    <Alert severity="warning" sx={{ mb: 2 }} action={
-                        <Button color="inherit" size="small" onClick={exitImpersonation}>
+                    <Box sx={{
+                        mb: 2,
+                        p: 2,
+                        backgroundColor: theme.palette.warning.light,
+                        color: theme.palette.warning.contrastText,
+                        borderRadius: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                    }}>
+                        <Box>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Modo de Suplantación Activo</Typography>
+                            <Typography variant="body2">Estás navegando como <strong>{user?.username}</strong>.</Typography>
+                        </Box>
+                        <Button color="inherit" size="small" onClick={exitImpersonation} sx={{
+                            borderColor: theme.palette.warning.contrastText,
+                            '&:hover': {
+                                borderColor: theme.palette.warning.contrastText,
+                                backgroundColor: 'rgba(255,255,255,0.1)'
+                            }
+                        }}>
                             VOLVER A SUPERADMIN
                         </Button>
-                    }>
-                        <AlertTitle>Modo de Suplantación Activo</AlertTitle>
-                        Estás navegando como <strong>{user?.username}</strong>.
-                    </Alert>
+                    </Box>
                 )}
                 <Outlet />
             </Box>
-            <CloseShiftModal open={closeModalOpen} onClose={() => setCloseModalOpen(false)} />
+            <CloseShiftModal open={closeModalOpen} onClose={() => setCloseModalOpen(false)} onShiftClosed={handleShiftClosed} />
         </Box>
     );
 }

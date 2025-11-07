@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Modal, Box, Typography, TextField, Button } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useSnackbar } from '../context/SnackbarContext';
+import { getTenantFromPath } from '../utils/tenantHelper';
 
 const style = {
   position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
@@ -10,8 +13,10 @@ const style = {
 
 const OpenShiftModal = ({ open, onClose }) => {
     const [openingBalance, setOpeningBalance] = useState('');
-    const [openingVirtualBalance, setOpeningVirtualBalance] = useState(''); // Nuevo estado
-    const { startShift } = useAuth();
+    const [openingVirtualBalance, setOpeningVirtualBalance] = useState('');
+    const { startShift, shiftLoading } = useAuth();
+    const { showSnackbar } = useSnackbar();
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -19,20 +24,24 @@ const OpenShiftModal = ({ open, onClose }) => {
         const virtualBalance = parseFloat(openingVirtualBalance) || 0;
 
         if (openingBalance === '' || isNaN(cashBalance)) {
-            alert('Por favor, ingresa un monto de apertura de efectivo válido.');
+            showSnackbar('Por favor, ingresa un monto de apertura de efectivo válido.', 'warning');
             return;
         }
 
-        const success = await startShift({ 
-            openingBalance: cashBalance, 
-            openingVirtualBalance: virtualBalance 
+        const success = await startShift({
+            openingBalance: cashBalance,
+            openingVirtualBalance: virtualBalance
         });
 
         if (success) {
             onClose();
-        } else {
-            alert('No se pudo iniciar el turno. Inténtalo de nuevo.');
+            const tenant = getTenantFromPath();
+            const target = tenant ? `/${tenant}/pos` : '/pos';
+            navigate(target, { replace: true });
+            return;
         }
+
+        showSnackbar('No se pudo iniciar el turno. Inténtalo de nuevo.', 'error');
     };
 
     return (
@@ -59,8 +68,8 @@ const OpenShiftModal = ({ open, onClose }) => {
                     sx={{ mt: 2 }}
                 />
                 <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-                    <Button onClick={onClose} sx={{ mr: 1 }}>Cancelar</Button>
-                    <Button type="submit" variant="contained">Iniciar Turno</Button>
+                    <Button onClick={onClose} sx={{ mr: 1 }} disabled={shiftLoading}>Cancelar</Button>
+                    <Button type="submit" variant="contained" disabled={shiftLoading}>{shiftLoading ? 'Iniciando...' : 'Iniciar Turno'}</Button>
                 </Box>
             </Box>
         </Modal>

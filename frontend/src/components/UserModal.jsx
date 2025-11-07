@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { Modal, Box, Typography, TextField, Button, MenuItem, FormControl, InputLabel, Select, FormHelperText } from '@mui/material';
+import { Modal, Box, Typography, TextField, Button, MenuItem, FormControl, InputLabel, Select, FormHelperText, IconButton, InputAdornment } from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 
 const style = {
@@ -15,33 +16,51 @@ const style = {
   borderRadius: 2
 };
 
-const UserModal = ({ open, onClose, onSave, roles = [] }) => {
-  const { control, handleSubmit, reset, formState: { errors } } = useForm({
+const UserModal = ({ open, onClose, onSave, roles = [], currentUser = null }) => {
+  const { control, handleSubmit, reset, setValue, formState: { errors } } = useForm({
     defaultValues: {
       username: '',
       password: '',
+      confirmPassword: '',
       role_id: ''
     }
   });
 
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+
+  const handleClickShowPassword = () => setShowPassword((show) => !show);
+  const handleClickShowConfirmPassword = () => setShowConfirmPassword((show) => !show);
+
+  const handleMouseDownPassword = (event) => {
+    event.preventDefault();
+  };
+
   useEffect(() => {
     if (open) {
-      reset({
-        username: '',
-        password: '',
-        role_id: ''
-      });
+      if (currentUser) {
+        setValue('username', currentUser.username);
+        setValue('role_id', currentUser.role_id);
+        // No pre-rellenar la contraseña por seguridad
+      } else {
+        reset({
+          username: '',
+          password: '',
+          confirmPassword: '',
+          role_id: ''
+        });
+      }
     }
-  }, [open, reset]);
+  }, [open, currentUser, reset, setValue]);
 
   const onSubmit = (data) => {
-    onSave(data);
+    onSave(data, currentUser ? currentUser.id : null);
   };
 
   return (
     <Modal open={open} onClose={onClose}>
       <Box sx={style} component="form" onSubmit={handleSubmit(onSubmit)}>
-        <Typography variant="h6">Nuevo Usuario</Typography>
+        <Typography variant="h6">{currentUser ? 'Editar Usuario' : 'Nuevo Usuario'}</Typography>
         
         <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Controller
@@ -54,6 +73,7 @@ const UserModal = ({ open, onClose, onSave, roles = [] }) => {
                 label="Nombre de Usuario *"
                 fullWidth
                 autoFocus
+                disabled={!!currentUser}
                 error={!!errors.username}
                 helperText={errors.username?.message}
               />
@@ -62,15 +82,58 @@ const UserModal = ({ open, onClose, onSave, roles = [] }) => {
           <Controller
             name="password"
             control={control}
-            rules={{ required: 'La contraseña es obligatoria' }}
+            rules={{ required: !currentUser, minLength: { value: 6, message: 'La contraseña debe tener al menos 6 caracteres' } }}
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Contraseña *"
-                type="password"
+                label="Contraseña"
+                type={showPassword ? 'text' : 'password'}
                 fullWidth
                 error={!!errors.password}
-                helperText={errors.password?.message}
+                helperText={errors.password ? errors.password.message : (currentUser ? 'Dejar en blanco para no cambiar' : '' )}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={handleClickShowPassword}
+                        onMouseDown={handleMouseDownPassword}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            )}
+          />
+          <Controller
+            name="confirmPassword"
+            control={control}
+            rules={{ validate: (value, formValues) => value === formValues.password || 'Las contraseñas no coinciden' }}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Confirmar Contraseña"
+                type={showConfirmPassword ? 'text' : 'password'}
+                fullWidth
+                error={!!errors.confirmPassword}
+                helperText={errors.confirmPassword?.message}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle confirm password visibility"
+                        onClick={handleClickShowConfirmPassword}
+                        onMouseDown={handleMouseDownPassword}
+                        edge="end"
+                      >
+                        {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
             )}
           />

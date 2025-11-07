@@ -5,6 +5,7 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import ReplayIcon from '@mui/icons-material/Replay';
 import apiClient from '../api/axios';
 import ReturnModal from '../components/ReturnModal';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const Row = ({ row, onReturnClick }) => {
     const [open, setOpen] = useState(false);
@@ -145,6 +146,7 @@ const Row = ({ row, onReturnClick }) => {
 };
 
 const SalesHistoryPage = () => {
+    const { showSnackbar } = useSnackbar();
     const [sales, setSales] = useState([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedSale, setSelectedSale] = useState(null);
@@ -170,11 +172,11 @@ const SalesHistoryPage = () => {
         try {
             // Enviamos el objeto completo a la API
             await apiClient.post('/returns', payload);
-            alert("Devolución registrada exitosamente.");
+            showSnackbar("Devolución registrada exitosamente.", "success");
             fetchSales(); // Refrescamos la lista de ventas
         } catch (error) {
             console.error("Error al registrar la devolución:", error);
-            alert("Error al registrar la devolución.");
+            showSnackbar("Error al registrar la devolución.", "error");
         } finally {
             setModalOpen(false);
             setSelectedSale(null);

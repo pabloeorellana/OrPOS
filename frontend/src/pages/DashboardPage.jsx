@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Grid, Paper, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, CircularProgress, Box, Alert, Collapse, List, ListItem, ListItemText } from '@mui/material';
+import { Typography, Grid, Paper, Table, TableBody, TableCell, TableHead, TableRow, TableContainer, CircularProgress, Box, Collapse, List, ListItem, ListItemText } from '@mui/material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import apiClient from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useSnackbar } from '../context/SnackbarContext';
 
 // Importa los iconos de Material-UI que vamos a usar
 import MonetizationOnOutlinedIcon from '@mui/icons-material/MonetizationOnOutlined';
@@ -17,13 +18,13 @@ import StatCard from '../components/StatCard';
 const DashboardPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { showSnackbar } = useSnackbar();
     
     const [kpis, setKpis] = useState(null);
     const [salesData, setSalesData] = useState([]);
     const [topProducts, setTopProducts] = useState([]);
     const [lowStockProducts, setLowStockProducts] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
     const [lowStockOpen, setLowStockOpen] = useState(false);
     const [topProductsOpen, setTopProductsOpen] = useState(false);
 
@@ -45,7 +46,6 @@ const DashboardPage = () => {
 
         if (user.permissions && user.permissions.includes('dashboard:view')) {
             setLoading(true);
-            setError('');
             Promise.all([
                 apiClient.get('/reports/dashboard-kpis'),
                 apiClient.get('/reports/sales-over-time'),
@@ -58,15 +58,15 @@ const DashboardPage = () => {
                 setTopProducts(topProductsRes.data);
                 setLowStockProducts(lowStockRes.data);
             }).catch(err => {
-                setError('No se pudieron cargar los datos del dashboard.');
+                showSnackbar('No se pudieron cargar los datos del dashboard.', 'error');
             }).finally(() => {
                 setLoading(false);
             });
         } else {
-            setError('No tienes permiso para ver esta sección.');
+            showSnackbar('No tienes permiso para ver esta sección.', 'error');
             setLoading(false);
         }
-    }, [user, navigate]);
+    }, [user, navigate, showSnackbar]);
 
     if (loading) {
         return (
@@ -76,9 +76,7 @@ const DashboardPage = () => {
         );
     }
 
-    if (error) {
-        return <Alert severity="error">{error}</Alert>;
-    }
+
     
     if(!kpis) {
         return <Typography>No hay datos disponibles para el dashboard.</Typography>;

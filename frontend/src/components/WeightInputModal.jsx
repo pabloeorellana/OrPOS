@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Box, Typography, TextField, Button } from '@mui/material';
+import { useSnackbar } from '../context/SnackbarContext';
 
 const style = {
   position: 'absolute',
@@ -17,6 +18,7 @@ const style = {
 const WeightInputModal = ({ open, onClose, onConfirm, product }) => {
     const [weight, setWeight] = useState('');
     const inputRef = React.useRef(null);
+    const { showSnackbar } = useSnackbar();
 
     // Enfocar el campo de texto cuando el modal se abre
     useEffect(() => {
@@ -33,7 +35,7 @@ const WeightInputModal = ({ open, onClose, onConfirm, product }) => {
             onConfirm(numericWeight);
             setWeight(''); // Limpiar para la próxima vez
         } else {
-            alert('Por favor, ingresa un peso válido.');
+            showSnackbar('Por favor, ingresa un peso válido.', 'warning');
         }
     };
 
